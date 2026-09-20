@@ -35,20 +35,21 @@ function RoleCard({
 export default function Home() {
   return (
     <div className="forja-shell bg-[#0A0A0A]">
-      {/* Cover photo on top, compact */}
-      <div className="relative h-[190px] w-full shrink-0 overflow-hidden">
+      {/* Full photo (no crop) with the title over its lower part */}
+      <div className="relative w-full shrink-0 overflow-hidden">
         <Image
           src="/trainer.jpg"
           alt="Entrenador"
-          fill
+          width={1400}
+          height={1000}
           sizes="(max-width: 768px) 100vw, 832px"
-          className="object-cover grayscale contrast-[1.12]"
-          style={{ objectPosition: "center 62%" }}
+          className="h-auto w-full grayscale contrast-[1.12] md:h-[440px] md:object-cover"
+          style={{ objectPosition: "center 30%" }}
           priority
         />
         <div
-          className="absolute inset-x-0 bottom-0 z-[1] h-[100px]"
-          style={{ background: "linear-gradient(to bottom, rgba(10,10,10,0) 0%, #0A0A0A 92%)" }}
+          className="absolute inset-x-0 bottom-0 h-[230px]"
+          style={{ background: "linear-gradient(to bottom, rgba(10,10,10,0) 0%, #0A0A0A 90%)" }}
         />
         <div
           className="absolute left-0 top-0 z-[2] h-0 w-0"
@@ -61,7 +62,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="relative z-[2] -mt-2 px-[22px]">
+      <div className="relative z-[2] -mt-[185px] px-[22px]">
         <p className="mb-3 text-sm font-extrabold tracking-[0.3em]" style={{ color: "#9CFF3D" }}>
           FORJA
         </p>
