@@ -103,6 +103,8 @@ export const profiles = pgTable("profiles", {
   telefono: text("telefono").default(""),
   fechaInicio: text("fecha_inicio").default(""),
   notas: text("notas").default(""),
+  // client profile photo, stored as data URL (same pattern as the original HTML)
+  photo: text("photo").default(""),
 });
 
 export const routineDays = pgTable("routine_days", {

@@ -1,0 +1,22 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/api/admin/me/route": "app/api/admin/me/route.js",
+  "/api/admin/users/route": "app/api/admin/users/route.js",
+  "/api/auth/[...all]/route": "app/api/auth/[...all]/route.js",
+  "/api/clients/[id]/diet/route": "app/api/clients/[id]/diet/route.js",
+  "/api/clients/[id]/logs/[dayId]/route": "app/api/clients/[id]/logs/[dayId]/route.js",
+  "/api/clients/[id]/profile/route": "app/api/clients/[id]/profile/route.js",
+  "/api/clients/[id]/progress/route": "app/api/clients/[id]/progress/route.js",
+  "/api/clients/[id]/route": "app/api/clients/[id]/route.js",
+  "/api/clients/[id]/routine/route": "app/api/clients/[id]/routine/route.js",
+  "/api/clients/route": "app/api/clients/route.js",
+  "/api/trainer/pin/route": "app/api/trainer/pin/route.js",
+  "/cliente/page": "app/cliente/page.js",
+  "/entrenador/page": "app/entrenador/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js"
+}

@@ -11,7 +11,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   const allowed = [
     "edad", "sexo", "peso", "altura", "cuello", "pecho", "cintura", "cadera",
     "bicepsD", "bicepsI", "antebrazoD", "antebrazoI", "cuadricepsD",
-    "cuadricepsI", "gemeloD", "gemeloI", "telefono", "fechaInicio", "notas",
+    "cuadricepsI", "gemeloD", "gemeloI", "telefono", "fechaInicio", "notas", "photo",
   ] as const;
 
   const patch: Record<string, string> = {};

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -191,6 +191,7 @@ export default function EntrenadorPage() {
         </Button>
         <div className="flex items-center gap-3">
           <Avatar className="h-11 w-11">
+            {bundle.profile?.photo ? <AvatarImage src={bundle.profile.photo} alt={bundle.client.name} /> : null}
             <AvatarFallback>{initials(bundle.client.name)}</AvatarFallback>
           </Avatar>
           <div>
@@ -212,6 +213,15 @@ export default function EntrenadorPage() {
           <TabsContent value="datos">
             <Card>
               <CardContent className="flex flex-col gap-4 pt-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="pf-photo">Foto del cliente (URL)</Label>
+                  <Input
+                    id="pf-photo"
+                    value={draft.photo ?? ""}
+                    onChange={(e) => setDraft({ ...draft, photo: e.target.value })}
+                    placeholder="https://…"
+                  />
+                </div>
                 {PROFILE_FIELDS.map(([k, label]) => (
                   <div key={k} className="grid gap-2">
                     <Label htmlFor={`pf-${k}`}>{label}</Label>

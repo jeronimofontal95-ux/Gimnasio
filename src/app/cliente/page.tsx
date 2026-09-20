@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -158,6 +158,7 @@ export default function ClientePage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Avatar>
+            {bundle.profile?.photo ? <AvatarImage src={bundle.profile.photo} alt={bundle.client.name} /> : null}
             <AvatarFallback>{initials(bundle.client.name)}</AvatarFallback>
           </Avatar>
           <b>{bundle.client.name}</b>

@@ -1,0 +1,3 @@
+export const production = {"DATABASE_URL":"postgresql://neondb_owner:npg_bKcB8CVQ2YDu@ep-green-butterfly-b58nziho-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require","BETTER_AUTH_SECRET":"qHpGG8p-sUaBG-O0ptnIMF_Jgo4hn8enfybOt3xL_3I","BETTER_AUTH_URL":"http://localhost:3000"};
+export const development = {"DATABASE_URL":"postgresql://neondb_owner:npg_bKcB8CVQ2YDu@ep-green-butterfly-b58nziho-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require","BETTER_AUTH_SECRET":"qHpGG8p-sUaBG-O0ptnIMF_Jgo4hn8enfybOt3xL_3I","BETTER_AUTH_URL":"http://localhost:3000"};
+export const test = {};
