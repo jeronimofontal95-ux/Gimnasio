@@ -41,6 +41,7 @@ export default function Home() {
           src="/trainer.jpg"
           alt="Entrenador"
           fill
+          sizes="(max-width: 768px) 100vw, 832px"
           className="object-cover grayscale contrast-[1.12]"
           style={{ objectPosition: "center 15%" }}
           priority

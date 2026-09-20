@@ -80,6 +80,14 @@ export default function ClientePage() {
       .catch(() => setClients([]));
   }, []);
 
+  useEffect(() => {
+    const strip = stripRef.current;
+    const cell = selCellRef.current;
+    if (strip && cell) {
+      strip.scrollTo({ left: cell.offsetLeft - strip.clientWidth / 2 + cell.clientWidth / 2, behavior: "smooth" });
+    }
+  }, [selDate]);
+
   const login = async () => {
     if (!picked) return;
     if (code.trim() !== picked.code) {
@@ -204,14 +212,6 @@ export default function ClientePage() {
   for (let d = mondayOf(addDaysISO(todayStr, -12 * 7)); d <= todayStr; d = addDaysISO(d, 1)) {
     stripDays.push(d);
   }
-
-  useEffect(() => {
-    const strip = stripRef.current;
-    const cell = selCellRef.current;
-    if (strip && cell) {
-      strip.scrollTo({ left: cell.offsetLeft - strip.clientWidth / 2 + cell.clientWidth / 2, behavior: "smooth" });
-    }
-  }, [selDate]);
 
   return (
     <div className="forja-shell gap-3 p-5 pb-24">
