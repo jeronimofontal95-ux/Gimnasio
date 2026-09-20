@@ -75,6 +75,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="coach@forja.com"
+                onKeyDown={(e) => e.key === "Enter" && doSignIn()}
               />
             </div>
             <div className="grid gap-2">
@@ -85,6 +86,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                onKeyDown={(e) => e.key === "Enter" && doSignIn()}
               />
             </div>
             <div className="flex gap-2">
