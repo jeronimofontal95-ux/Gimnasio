@@ -155,12 +155,23 @@ export default function EntrenadorPage() {
     if (!openId || savingRoutine) return;
     setSavingRoutine(true);
     try {
-      const nonEmpty = days.filter((d) => (d.exercises ?? []).length > 0);
+      const cleanDays = days.map((d) => ({
+        ...d,
+        exercises: (d.exercises ?? [])
+          .map((ex) => ({
+            ...ex,
+            media: (ex.media ?? []).filter((u) => u.trim()).slice(0, 3),
+            sets: (ex.sets ?? []).map((s) => s.trim()).filter(Boolean),
+          }))
+          .filter((ex) => ex.name.trim() && ex.sets.length > 0),
+      }));
+      const nonEmpty = cleanDays.filter((d) => d.exercises.length > 0);
       await fetch(`/api/clients/${openId}/routine`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ days: nonEmpty }),
       });
+      setDaysDraft(normalizeWeekDays(cleanDays));
       setMsg(nonEmpty.length ? "Rutina guardada" : "Rutina guardada (semana en descanso)");
       setTimeout(() => setMsg(""), 2000);
     } finally {
@@ -314,8 +325,8 @@ export default function EntrenadorPage() {
                     <div key={j} className="flex flex-col gap-2">
                       <Separator className="my-1" />
                       <Input value={ex.name} placeholder="Ejercicio" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].name = e.target.value; setDaysDraft(c); }} />
-                      <Input value={(ex.media ?? []).join(" ")} placeholder="GIF URL (máx 3, separados por espacio)" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].media = e.target.value.split(/\s+/).filter(Boolean).slice(0, 3); setDaysDraft(c); }} />
-                      <Textarea rows={3} value={(ex.sets ?? []).join("\n")} placeholder="Una serie por línea" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].sets = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); setDaysDraft(c); }} />
+                      <Input value={(ex.media ?? []).join(" ")} placeholder="GIF URL (máx 3, separados por espacio)" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].media = e.target.value.split(" ").slice(0, 3); setDaysDraft(c); }} />
+                      <Textarea rows={3} value={(ex.sets ?? []).join("\n")} placeholder="Una serie por línea. Ej: Efectiva 10-12 reps" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].sets = e.target.value.split("\n"); setDaysDraft(c); }} />
                       <Button variant="ghost" size="sm" className="w-fit text-destructive" onClick={() => { const c = structuredClone(daysDraft); c[activeDay].exercises.splice(j, 1); setDaysDraft(c); }}>
                         <Trash2 size={14} />
                         Eliminar ejercicio
