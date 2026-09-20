@@ -64,6 +64,16 @@ const initials = (name: string) =>
     .toUpperCase();
 
 const WEEKDAY_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
+const WEEKDAY_FULL = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+type DayDraft = Bundle["days"][number];
+
+const normalizeWeekDays = (days: Bundle["days"]): DayDraft[] =>
+  WEEKDAY_FULL.map((label, wd) => {
+    const found = days.find((d) => d.weekday === wd);
+    if (found) return { ...found, weekday: wd, exercises: found.exercises ?? [] };
+    return { id: "", name: label, warmup: "", weekday: wd, exercises: [] };
+  });
 
 export default function EntrenadorPage() {
   const { data: session, isPending } = useSession();
@@ -75,6 +85,7 @@ export default function EntrenadorPage() {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [dietDraft, setDietDraft] = useState<Record<string, string>>({});
   const [daysDraft, setDaysDraft] = useState<Bundle["days"]>([]);
+  const [activeDay, setActiveDay] = useState(0);
   const [msg, setMsg] = useState("");
   const [savingRoutine, setSavingRoutine] = useState(false);
 
@@ -100,7 +111,9 @@ export default function EntrenadorPage() {
     setTab("datos");
     setDraft({ ...(b.profile ?? {}) });
     setDietDraft({ ...(b.diet ?? {}) });
-    setDaysDraft(structuredClone(b.days));
+    setDaysDraft(normalizeWeekDays(b.days));
+    const firstWithEx = normalizeWeekDays(b.days).findIndex((d) => (d.exercises ?? []).length > 0);
+    setActiveDay(firstWithEx >= 0 ? firstWithEx : 0);
   };
 
   const createClient = async () => {
@@ -142,12 +155,13 @@ export default function EntrenadorPage() {
     if (!openId || savingRoutine) return;
     setSavingRoutine(true);
     try {
+      const nonEmpty = days.filter((d) => (d.exercises ?? []).length > 0);
       await fetch(`/api/clients/${openId}/routine`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ days }),
+        body: JSON.stringify({ days: nonEmpty }),
       });
-      setMsg("Rutina guardada");
+      setMsg(nonEmpty.length ? "Rutina guardada" : "Rutina guardada (semana en descanso)");
       setTimeout(() => setMsg(""), 2000);
     } finally {
       setSavingRoutine(false);
@@ -155,17 +169,26 @@ export default function EntrenadorPage() {
   };
 
   const loadTemplate = async () => {
-    if (!confirm("Reemplaza la rutina actual con la plantilla de ejemplo (5 días). ¿Continuar?")) return;
+    if (!confirm("Reemplaza la rutina actual con la plantilla de ejemplo (lun–vie). ¿Continuar?")) return;
     const t = plantillaRutina();
-    const mapped = t.days.map((d, idx) => ({
-      id: "",
-      name: d.name,
-      warmup: d.warmup,
-      weekday: idx < 5 ? idx : null,
-      exercises: d.exercises.map((e) => ({ id: "", name: e.name, media: e.gif ? [e.gif] : [], sets: e.sets })),
-    }));
+    const mapped = WEEKDAY_FULL.map((label, wd) => {
+      const tpl = wd < 5 ? t.days[wd] : null;
+      if (!tpl) return { id: "", name: label, warmup: "", weekday: wd, exercises: [] };
+      return {
+        id: "",
+        name: tpl.name,
+        warmup: tpl.warmup,
+        weekday: wd,
+        exercises: tpl.exercises.map((e) => ({ id: "", name: e.name, media: e.gif ? [e.gif] : [], sets: e.sets })),
+      };
+    });
     setDaysDraft(mapped as Bundle["days"]);
+    setActiveDay(0);
     await saveRoutine(mapped as Bundle["days"]);
+  };
+
+  const updateActiveDay = (patch: Partial<DayDraft>) => {
+    setDaysDraft((prev) => prev.map((d, idx) => (idx === activeDay ? { ...d, ...patch } : d)));
   };
 
   if (isPending) {
@@ -249,60 +272,73 @@ export default function EntrenadorPage() {
 
           <TabsContent value="rutina" className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{daysDraft.length} día(s)</span>
+              <span className="text-xs text-muted-foreground">
+                {daysDraft.filter((d) => (d.exercises ?? []).length > 0).length} día(s) con rutina
+              </span>
               <Button variant="link" className="h-auto p-0" style={{ color: "#9CFF3D" }} onClick={loadTemplate}>
                 Cargar plantilla
               </Button>
             </div>
-            {daysDraft.map((d, i) => (
-              <Card key={i}>
+            <div className="flex gap-1">
+              {WEEKDAY_SHORT.map((w, wd) => {
+                const count = (daysDraft[wd]?.exercises ?? []).length;
+                return (
+                  <Button
+                    key={wd}
+                    size="sm"
+                    variant={activeDay === wd ? "default" : "outline"}
+                    className="h-9 flex-1 flex-col gap-0 px-0 leading-none"
+                    onClick={() => setActiveDay(wd)}
+                  >
+                    {w}
+                    <span className="text-[10px] opacity-70">{count > 0 ? `·${count}` : "·–"}</span>
+                  </Button>
+                );
+              })}
+            </div>
+            {daysDraft[activeDay] && (
+              <Card key={activeDay}>
                 <CardContent className="flex flex-col gap-2 pt-4">
-                  <Input value={d.name} onChange={(e) => { const c = [...daysDraft]; c[i] = { ...c[i], name: e.target.value }; setDaysDraft(c); }} />
-                  <Input value={d.warmup ?? ""} placeholder="Calentamiento…" onChange={(e) => { const c = [...daysDraft]; c[i] = { ...c[i], warmup: e.target.value }; setDaysDraft(c); }} />
-                  <div>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Día de la semana</span>
-                    <div className="mt-1 flex gap-1">
-                      {WEEKDAY_SHORT.map((w, wd) => (
-                        <Button
-                          key={wd}
-                          size="sm"
-                          variant={d.weekday === wd ? "default" : "outline"}
-                          className="h-8 flex-1 px-0"
-                          onClick={() => { const c = [...daysDraft]; c[i] = { ...c[i], weekday: c[i].weekday === wd ? null : wd }; setDaysDraft(c); }}
-                        >
-                          {w}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  {(d.exercises ?? []).map((ex, j) => (
+                  <p className="text-sm font-bold">{WEEKDAY_FULL[activeDay]}</p>
+                  <Input
+                    value={daysDraft[activeDay].name}
+                    placeholder={`Rutina del ${WEEKDAY_FULL[activeDay].toLowerCase()}…`}
+                    onChange={(e) => updateActiveDay({ name: e.target.value })}
+                  />
+                  <Input
+                    value={daysDraft[activeDay].warmup ?? ""}
+                    placeholder="Calentamiento…"
+                    onChange={(e) => updateActiveDay({ warmup: e.target.value })}
+                  />
+                  {(daysDraft[activeDay].exercises ?? []).map((ex, j) => (
                     <div key={j} className="flex flex-col gap-2">
                       <Separator className="my-1" />
-                      <Input value={ex.name} placeholder="Ejercicio" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].name = e.target.value; setDaysDraft(c); }} />
-                      <Input value={(ex.media ?? []).join(" ")} placeholder="GIF URL (máx 3, separados por espacio)" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].media = e.target.value.split(/\s+/).filter(Boolean).slice(0, 3); setDaysDraft(c); }} />
-                      <Textarea rows={3} value={(ex.sets ?? []).join("\n")} placeholder="Una serie por línea" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].sets = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); setDaysDraft(c); }} />
-                      <Button variant="ghost" size="sm" className="w-fit text-destructive" onClick={() => { const c = structuredClone(daysDraft); c[i].exercises.splice(j, 1); setDaysDraft(c); }}>
+                      <Input value={ex.name} placeholder="Ejercicio" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].name = e.target.value; setDaysDraft(c); }} />
+                      <Input value={(ex.media ?? []).join(" ")} placeholder="GIF URL (máx 3, separados por espacio)" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].media = e.target.value.split(/\s+/).filter(Boolean).slice(0, 3); setDaysDraft(c); }} />
+                      <Textarea rows={3} value={(ex.sets ?? []).join("\n")} placeholder="Una serie por línea" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].sets = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); setDaysDraft(c); }} />
+                      <Button variant="ghost" size="sm" className="w-fit text-destructive" onClick={() => { const c = structuredClone(daysDraft); c[activeDay].exercises.splice(j, 1); setDaysDraft(c); }}>
                         <Trash2 size={14} />
                         Eliminar ejercicio
                       </Button>
                     </div>
                   ))}
+                  {!daysDraft[activeDay].exercises?.length && (
+                    <p className="text-sm text-muted-foreground">Día de descanso. Agrega ejercicios para activar este día.</p>
+                  )}
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { const c = structuredClone(daysDraft); c[i].exercises.push({ id: "", name: "", media: [], sets: [] }); setDaysDraft(c); }}>
+                    <Button variant="outline" size="sm" onClick={() => { const c = structuredClone(daysDraft); c[activeDay].exercises.push({ id: "", name: "", media: [], sets: [] }); setDaysDraft(c); }}>
                       <Plus size={14} />
                       Ejercicio
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDaysDraft(daysDraft.filter((_, x) => x !== i))}>
-                      Eliminar día
-                    </Button>
+                    {!!daysDraft[activeDay].exercises?.length && (
+                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => updateActiveDay({ exercises: [] })}>
+                        Vaciar día
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            ))}
-            <Button variant="outline" onClick={() => setDaysDraft([...daysDraft, { id: "", name: "Nuevo día", warmup: "", weekday: null, exercises: [] }])}>
-              <Plus size={16} />
-              Agregar día
-            </Button>
+            )}
             <Button onClick={() => saveRoutine()} disabled={savingRoutine}>
               {savingRoutine ? (
                 <>
