@@ -64,7 +64,6 @@ export default function ClientePage() {
   const [err, setErr] = useState("");
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [tab, setTab] = useState<"rutina" | "dieta" | "datos" | "progreso">("rutina");
-  const [dayIdx, setDayIdx] = useState(0);
   const [log, setLog] = useState<LogExercise[] | null>(null);
   const [selDate, setSelDate] = useState(() => isoLocal(new Date()));
   const [calMonth, setCalMonth] = useState(() => {
@@ -110,18 +109,18 @@ export default function ClientePage() {
   useEffect(() => {
     if (bundle && bundle.days.length) {
       const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
-      const i = idx >= 0 ? idx : 0;
-      setDayIdx(i);
-      loadLog(bundle.client.id, bundle.days[i].id, selDate);
+      loadLog(bundle.client.id, bundle.days[idx >= 0 ? idx : 0].id, selDate);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundle?.client.id]);
 
   const saveLog = async (next: LogExercise[]) => {
     if (isFutureDate) return;
-    if (!bundle || !bundle.days[dayIdx]) return;
+    if (!bundle || !bundle.days.length) return;
+    const di = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
+    if (di < 0) return;
     setLog(next);
-    await fetch(`/api/clients/${bundle.client.id}/logs/${bundle.days[dayIdx].id}?date=${selDate}`, {
+    await fetch(`/api/clients/${bundle.client.id}/logs/${bundle.days[di].id}?date=${selDate}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ payload: next }),
@@ -143,14 +142,19 @@ export default function ClientePage() {
     setSelDate(date);
     if (!bundle || !bundle.days.length) return;
     const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(date));
-    const i = idx >= 0 ? idx : dayIdx;
-    setDayIdx(i);
     if (date > todayStr) {
       // future dates: read-only preview of the scheduled routine, nothing to load
       setLog(null);
       return;
     }
-    loadLog(bundle.client.id, bundle.days[i].id, date);
+    if (idx >= 0) loadLog(bundle.client.id, bundle.days[idx].id, date);
+    else setLog(null);
+  };
+
+  const goToWeekday = (wd: number) => {
+    let d = todayStr;
+    while (dowOf(d) !== wd) d = addDaysISO(d, 1);
+    gotoDate(d);
   };
 
   if (!bundle) {
@@ -214,7 +218,8 @@ export default function ClientePage() {
 
   const todayStr = isoLocal(new Date());
   const days = bundle.days;
-  const day = days[dayIdx];
+  const dayIdx = days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
+  const day = dayIdx >= 0 ? days[dayIdx] : null;
   const isFutureDate = selDate > todayStr;
   const preview: LogExercise[] | null =
     isFutureDate && day
@@ -296,24 +301,28 @@ export default function ClientePage() {
             )}
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {days.map((d, i) => (
-              <Button
-                key={d.id}
-                size="sm"
-                variant={i === dayIdx ? "default" : "outline"}
-                className="shrink-0 rounded-full"
-                onClick={() => { setDayIdx(i); if (selDate <= todayStr) loadLog(bundle.client.id, d.id, selDate); }}
-              >
-                {d.name}
-                {d.weekday != null && (
-                  <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold">
-                    {WEEKDAYS[d.weekday]}
-                  </span>
-                )}
-              </Button>
-            ))}
+            {WEEKDAYS.map((w, wd) => {
+              const d = days.find((dd) => dd.weekday === wd);
+              if (!d) return null;
+              return (
+                <Button
+                  key={wd}
+                  size="sm"
+                  variant={wd === dowOf(selDate) ? "default" : "outline"}
+                  className="shrink-0 rounded-full"
+                  onClick={() => goToWeekday(wd)}
+                >
+                  {d.name}
+                </Button>
+              );
+            })}
           </div>
           {!days.length && <p className="text-sm text-muted-foreground">Tu entrenador todavía no ha creado tu rutina.</p>}
+          {!day && days.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Día de descanso · No hay rutina programada para el <b className="capitalize">{fmtShort(selDate)}</b>.
+            </p>
+          )}
           {day && (viewLog ?? []).length === 0 && (
             <p className="text-sm text-muted-foreground">Este día aún no tiene ejercicios asignados. Pídele a tu entrenador que los agregue.</p>
           )}
