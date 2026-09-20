@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -70,6 +70,8 @@ export default function ClientePage() {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() };
   });
+  const stripRef = useRef<HTMLDivElement>(null);
+  const selCellRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     fetch("/api/clients")
@@ -197,8 +199,19 @@ export default function ClientePage() {
   const done = (log ?? []).reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0);
   const pct = total ? Math.round((done / total) * 100) : 0;
   const todayStr = isoLocal(new Date());
-  const weekStart = mondayOf(selDate);
   const histDates = new Set(bundle.history.map((h) => h.date));
+  const stripDays: string[] = [];
+  for (let d = mondayOf(addDaysISO(todayStr, -12 * 7)); d <= todayStr; d = addDaysISO(d, 1)) {
+    stripDays.push(d);
+  }
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    const cell = selCellRef.current;
+    if (strip && cell) {
+      strip.scrollTo({ left: cell.offsetLeft - strip.clientWidth / 2 + cell.clientWidth / 2, behavior: "smooth" });
+    }
+  }, [selDate]);
 
   return (
     <div className="forja-shell gap-3 p-5 pb-24">
@@ -217,53 +230,33 @@ export default function ClientePage() {
 
       {tab === "rutina" && (
         <>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Semana anterior"
-              onClick={() => gotoDate(addDaysISO(weekStart, -7))}
-            >
-              <ChevronLeft size={16} />
-            </Button>
-            <div className="grid flex-1 grid-cols-7 gap-1">
-              {[0, 1, 2, 3, 4, 5, 6].map((o) => {
-                const d = addDaysISO(weekStart, o);
-                const isSel = d === selDate;
-                const isFuture = d > todayStr;
-                const doneHere = histDates.has(d);
-                return (
-                  <button
-                    key={d}
-                    disabled={isFuture}
-                    onClick={() => gotoDate(d)}
-                    className={`flex flex-col items-center rounded-lg border py-1.5 ${
-                      isSel ? "border-primary bg-primary text-primary-foreground" : "border-border"
-                    } ${isFuture ? "opacity-30" : ""}`}
-                  >
-                    <span className="text-[10px] leading-none">{WEEKDAYS[o]}</span>
-                    <span className="text-sm font-bold leading-tight">{Number(d.slice(8))}</span>
-                    {doneHere ? (
-                      <span
-                        className="mt-0.5 h-1.5 w-1.5 rounded-full"
-                        style={{ background: isSel ? "#0a0a0a" : "#9CFF3D" }}
-                      />
-                    ) : (
-                      <span className="mt-0.5 h-1.5" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Semana siguiente"
-              disabled={weekStart >= mondayOf(todayStr)}
-              onClick={() => gotoDate(addDaysISO(weekStart, 7))}
-            >
-              <ChevronRight size={16} />
-            </Button>
+          <div ref={stripRef} className="flex gap-1 overflow-x-auto pb-1">
+            {stripDays.map((d) => {
+              const isSel = d === selDate;
+              const doneHere = histDates.has(d);
+              const wd = (parseISO(d).getDay() + 6) % 7;
+              return (
+                <button
+                  key={d}
+                  ref={isSel ? selCellRef : undefined}
+                  onClick={() => gotoDate(d)}
+                  className={`flex shrink-0 grow-0 basis-[calc((100%-24px)/7)] snap-start flex-col items-center rounded-lg border py-1.5 ${
+                    isSel ? "border-primary bg-primary text-primary-foreground" : "border-border"
+                  }`}
+                >
+                  <span className="text-[10px] leading-none">{WEEKDAYS[wd]}</span>
+                  <span className="text-sm font-bold leading-tight">{Number(d.slice(8))}</span>
+                  {doneHere ? (
+                    <span
+                      className="mt-0.5 h-1.5 w-1.5 rounded-full"
+                      style={{ background: isSel ? "#0a0a0a" : "#9CFF3D" }}
+                    />
+                  ) : (
+                    <span className="mt-0.5 h-1.5" />
+                  )}
+                </button>
+              );
+            })}
           </div>
           <div className="flex items-center justify-between">
             <b className="text-sm capitalize">{selDate === todayStr ? "Hoy" : fmtShort(selDate)}</b>
