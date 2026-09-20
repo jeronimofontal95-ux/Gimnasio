@@ -43,7 +43,7 @@ export default function Home() {
           fill
           sizes="(max-width: 768px) 100vw, 832px"
           className="object-cover grayscale contrast-[1.12]"
-          style={{ objectPosition: "center 15%" }}
+          style={{ objectPosition: "center 62%" }}
           priority
         />
         <div
