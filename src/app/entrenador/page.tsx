@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
@@ -74,10 +75,20 @@ export default function EntrenadorPage() {
   const [dietDraft, setDietDraft] = useState<Record<string, string>>({});
   const [daysDraft, setDaysDraft] = useState<Bundle["days"]>([]);
   const [msg, setMsg] = useState("");
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [opening, setOpening] = useState(false);
 
   const loadClients = async () => {
-    const r = await fetch("/api/clients");
-    setClients(await r.json());
+    setLoadingClients(true);
+    try {
+      const r = await fetch("/api/clients");
+      const j = await r.json();
+      setClients(Array.isArray(j) ? j : []);
+    } catch {
+      setClients([]);
+    } finally {
+      setLoadingClients(false);
+    }
   };
 
   useEffect(() => {
@@ -85,14 +96,19 @@ export default function EntrenadorPage() {
   }, [session ]);
 
   const openClient = async (id: string) => {
-    const r = await fetch(`/api/clients/${id}`);
-    const b: Bundle = await r.json();
-    setOpenId(id);
-    setBundle(b);
-    setTab("datos");
-    setDraft({ ...(b.profile ?? {}) });
-    setDietDraft({ ...(b.diet ?? {}) });
-    setDaysDraft(structuredClone(b.days));
+    setOpening(true);
+    try {
+      const r = await fetch(`/api/clients/${id}`);
+      const b: Bundle = await r.json();
+      setOpenId(id);
+      setBundle(b);
+      setTab("datos");
+      setDraft({ ...(b.profile ?? {}) });
+      setDietDraft({ ...(b.diet ?? {}) });
+      setDaysDraft(structuredClone(b.days));
+    } finally {
+      setOpening(false);
+    }
   };
 
   const createClient = async () => {
@@ -182,6 +198,23 @@ export default function EntrenadorPage() {
     );
   }
 
+  if (opening) {
+    return (
+      <div className="forja-shell gap-4 p-5">
+        <Skeleton className="h-9 w-28" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-11 w-11 rounded-full" />
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-5 w-24" />
+          </div>
+        </div>
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
   if (openId && bundle) {
     return (
       <div className="forja-shell gap-4 p-5">
@@ -212,8 +245,8 @@ export default function EntrenadorPage() {
 
           <TabsContent value="datos">
             <Card>
-              <CardContent className="flex flex-col gap-4 pt-6">
-                <div className="grid gap-2">
+              <CardContent className="grid gap-4 pt-6 sm:grid-cols-2">
+                <div className="grid gap-2 sm:col-span-2">
                   <Label htmlFor="pf-photo">Foto del cliente (URL)</Label>
                   <Input
                     id="pf-photo"
@@ -228,7 +261,7 @@ export default function EntrenadorPage() {
                     <Input id={`pf-${k}`} value={draft[k] ?? ""} onChange={(e) => setDraft({ ...draft, [k]: e.target.value })} />
                   </div>
                 ))}
-                <Button onClick={saveProfile}>Guardar datos</Button>
+                <Button onClick={saveProfile} className="sm:col-span-2">Guardar datos</Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -278,14 +311,14 @@ export default function EntrenadorPage() {
 
           <TabsContent value="dieta">
             <Card>
-              <CardContent className="flex flex-col gap-4 pt-6">
+              <CardContent className="grid gap-4 pt-6 sm:grid-cols-2">
                 {DIET_FIELDS.map(([k, label]) => (
                   <div key={k} className="grid gap-2">
                     <Label htmlFor={`diet-${k}`}>{label}</Label>
                     <Textarea id={`diet-${k}`} rows={2} value={dietDraft[k] ?? ""} onChange={(e) => setDietDraft({ ...dietDraft, [k]: e.target.value })} />
                   </div>
                 ))}
-                <Button onClick={saveDiet}>Guardar dieta</Button>
+                <Button onClick={saveDiet} className="sm:col-span-2">Guardar dieta</Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -344,18 +377,26 @@ export default function EntrenadorPage() {
         </CardContent>
       </Card>
       <div className="flex flex-col gap-2">
-        {clients.map((c) => (
-          <Card key={c.id} className="cursor-pointer transition-colors hover:border-primary/60" onClick={() => openClient(c.id)}>
-            <CardContent className="flex items-center gap-3 py-3">
-              <Avatar>
-                <AvatarFallback>{initials(c.name)}</AvatarFallback>
-              </Avatar>
-              <b className="flex-1">{c.name}</b>
-              <Badge variant="secondary">código {c.code}</Badge>
-            </CardContent>
-          </Card>
-        ))}
-        {!clients.length && <p className="text-sm text-muted-foreground">Aún no hay clientes. Crea el primero arriba.</p>}
+        {loadingClients ? (
+          <>
+            <Skeleton className="h-[68px] w-full" />
+            <Skeleton className="h-[68px] w-full" />
+            <Skeleton className="h-[68px] w-full" />
+          </>
+        ) : (
+          clients.map((c) => (
+            <Card key={c.id} className="cursor-pointer transition-colors hover:border-primary/60" onClick={() => openClient(c.id)}>
+              <CardContent className="flex items-center gap-3 py-3">
+                <Avatar>
+                  <AvatarFallback>{initials(c.name)}</AvatarFallback>
+                </Avatar>
+                <b className="flex-1">{c.name}</b>
+                <Badge variant="secondary">código {c.code}</Badge>
+              </CardContent>
+            </Card>
+          ))
+        )}
+        {!loadingClients && !clients.length && <p className="text-sm text-muted-foreground">Aún no hay clientes. Crea el primero arriba.</p>}
       </div>
     </div>
   );

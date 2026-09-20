@@ -86,8 +86,22 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+:root {
+  --shell-max: 34rem;
+}
+
 body {
   font-family: var(--font-sans), Inter, Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(60rem 28rem at 50% -8rem, rgba(156, 255, 61, 0.07), transparent 70%),
+    #0a0a0a;
+  background-attachment: fixed;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --shell-max: 52rem;
+  }
 }
 
 h1,
@@ -104,13 +118,22 @@ h3,
 }
 
 .forja-shell {
-  max-width: 520px;
+  width: 100%;
+  max-width: var(--shell-max);
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--surface);
   display: flex;
   flex-direction: column;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 768px) {
+  .forja-shell {
+    border-left: 1px solid var(--steel-2, #262626);
+    border-right: 1px solid var(--steel-2, #262626);
+  }
 }
 
 .forja-input {

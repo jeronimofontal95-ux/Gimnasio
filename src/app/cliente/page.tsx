@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft } from "lucide-react";
 import type { LogExercise } from "@/db/schema";
 
@@ -47,9 +48,16 @@ export default function ClientePage() {
   const [tab, setTab] = useState<"rutina" | "dieta" | "datos" | "progreso">("rutina");
   const [dayIdx, setDayIdx] = useState(0);
   const [log, setLog] = useState<LogExercise[] | null>(null);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [loadingBundle, setLoadingBundle] = useState(false);
+  const [loadingLog, setLoadingLog] = useState(false);
 
   useEffect(() => {
-    fetch("/api/clients").then((r) => r.json()).then(setClients);
+    fetch("/api/clients")
+      .then((r) => r.json())
+      .then((j) => setClients(Array.isArray(j) ? j : []))
+      .catch(() => setClients([]))
+      .finally(() => setLoadingClients(false));
   }, []);
 
   const login = async () => {
@@ -59,15 +67,25 @@ export default function ClientePage() {
       return;
     }
     const r = await fetch(`/api/clients/${picked.id}`);
-    const b: Bundle = await r.json();
-    setBundle(b);
-    setErr("");
+    setLoadingBundle(true);
+    try {
+      const b: Bundle = await r.json();
+      setBundle(b);
+      setErr("");
+    } finally {
+      setLoadingBundle(false);
+    }
   };
 
   const loadLog = async (clientId: string, dayId: string) => {
-    const r = await fetch(`/api/clients/${clientId}/logs/${dayId}`);
-    const j = await r.json();
-    setLog(j.payload as LogExercise[]);
+    setLoadingLog(true);
+    try {
+      const r = await fetch(`/api/clients/${clientId}/logs/${dayId}`);
+      const j = await r.json();
+      setLog(j.payload as LogExercise[]);
+    } finally {
+      setLoadingLog(false);
+    }
   };
 
   useEffect(() => {
@@ -97,19 +115,27 @@ export default function ClientePage() {
             Volver
           </Button>
           <h1 className="text-2xl font-bold">Selecciona tu nombre</h1>
-          <div className="flex flex-col gap-2">
-            {clients.map((c) => (
-              <Card key={c.id} className="cursor-pointer transition-colors hover:border-primary/60" onClick={() => setPicked(c)}>
-                <CardContent className="flex items-center gap-3 py-3">
-                  <Avatar>
-                    <AvatarFallback>{initials(c.name)}</AvatarFallback>
-                  </Avatar>
-                  <b>{c.name}</b>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          {!clients.length && <p className="text-sm text-muted-foreground">Tu entrenador aún no te ha registrado.</p>}
+          {loadingClients ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-[68px] w-full" />
+              <Skeleton className="h-[68px] w-full" />
+              <Skeleton className="h-[68px] w-full" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {clients.map((c) => (
+                <Card key={c.id} className="cursor-pointer transition-colors hover:border-primary/60" onClick={() => setPicked(c)}>
+                  <CardContent className="flex items-center gap-3 py-3">
+                    <Avatar>
+                      <AvatarFallback>{initials(c.name)}</AvatarFallback>
+                    </Avatar>
+                    <b>{c.name}</b>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {!loadingClients && !clients.length && <p className="text-sm text-muted-foreground">Tu entrenador aún no te ha registrado.</p>}
         </div>
       );
     }
@@ -153,6 +179,34 @@ export default function ClientePage() {
   const done = (log ?? []).reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0);
   const pct = total ? Math.round((done / total) * 100) : 0;
 
+  if (loadingBundle) {
+    return (
+      <div className="forja-shell gap-3 p-5 pb-24">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-5 w-32" />
+          </div>
+          <Skeleton className="h-8 w-14" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-24 rounded-full" />
+          <Skeleton className="h-8 w-24 rounded-full" />
+          <Skeleton className="h-8 w-24 rounded-full" />
+        </div>
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <div className="fixed bottom-0 left-1/2 flex w-full -translate-x-1/2 gap-2 border-t border-border bg-background/95 p-2 backdrop-blur" style={{ maxWidth: "var(--shell-max)" }}>
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 flex-1" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="forja-shell gap-3 p-5 pb-24">
       <div className="flex items-center justify-between">
@@ -195,7 +249,13 @@ export default function ClientePage() {
                   <CardContent className="py-3 text-sm">🔸 {day.warmup}</CardContent>
                 </Card>
               )}
-              {(log ?? []).map((ex, ei) => (
+              {(loadingLog || !log) ? (
+                <>
+                  <Skeleton className="h-44 w-full" />
+                  <Skeleton className="h-44 w-full" />
+                </>
+              ) : (
+                (log ?? []).map((ex, ei) => (
                 <Card key={ei}>
                   <CardContent className="flex flex-col gap-1 pt-4">
                     <b className="text-sm">{ei + 1}. {ex.name}</b>
@@ -210,7 +270,8 @@ export default function ClientePage() {
                     ))}
                   </CardContent>
                 </Card>
-              ))}
+                ))
+              )}
             </>
           )}
         </>
@@ -254,7 +315,7 @@ export default function ClientePage() {
         </Card>
       )}
 
-      <div className="fixed bottom-0 left-1/2 flex w-full max-w-[520px] -translate-x-1/2 border-t border-border bg-background/95 p-2 backdrop-blur">
+      <div className="fixed bottom-0 left-1/2 flex w-full -translate-x-1/2 border-t border-border bg-background/95 p-2 backdrop-blur" style={{ maxWidth: "var(--shell-max)" }}>
         {(["rutina", "dieta", "datos", "progreso"] as const).map((t) => (
           <Button key={t} variant={tab === t ? "secondary" : "ghost"} className="flex-1 capitalize" onClick={() => setTab(t)}>
             {t}
