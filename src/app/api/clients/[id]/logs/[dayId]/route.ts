@@ -24,16 +24,27 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; day
 
   const dayRows = await db.select().from(routineDays).where(eq(routineDays.id, dayId));
   const exRows = await db.select().from(exercises).where(eq(exercises.dayId, dayId));
-  const sig = exRows.map((e) => e.name).join("|");
+  // Signature includes series count so adding/removing series rebuilds rows
+  // (merging keeps weight/reps already logged for unchanged series).
+  const sig = exRows.map((e) => `${e.name}:${(e.sets as string[]).length}`).join("|");
 
   if (existing.length && existing[0].signature === sig) {
     return NextResponse.json(existing[0]);
   }
 
-  const payload: LogExercise[] = exRows.map((e) => ({
-    name: e.name,
-    sets: (e.sets as string[]).map((target) => ({ target, reps: "", weight: "", done: false })),
-  }));
+  const stored = (existing.length ? (existing[0].payload as LogExercise[]) : []) ?? [];
+  const payload: LogExercise[] = exRows.map((e) => {
+    const prev = stored.find((x) => x.name === e.name);
+    const targets = e.sets as string[];
+    return {
+      name: e.name,
+      sets: targets.map((target, i) =>
+        prev?.sets[i] && prev.sets[i].target === target
+          ? prev.sets[i]
+          : { target, reps: "", weight: "", done: false }
+      ),
+    };
+  });
 
   if (existing.length) {
     const updated = await db
@@ -66,7 +77,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string; day
   if (!existing.length) {
     const inserted = await db
       .insert(workoutLogs)
-      .values({ clientId: id, dayId, logDate: date, signature: payload.map((e) => e.name).join("|"), payload })
+      .values({ clientId: id, dayId, logDate: date, signature: payload.map((e) => `${e.name}:${e.sets.length}`).join("|"), payload })
       .returning();
     return NextResponse.json(inserted[0]);
   }

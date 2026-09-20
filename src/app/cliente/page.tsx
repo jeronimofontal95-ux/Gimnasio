@@ -363,10 +363,35 @@ export default function ClientePage() {
                   </CardContent>
                 </Card>
               )}
-              {(viewLog ?? []).map((ex, ei) => (
+              {(viewLog ?? []).map((ex, ei) => {
+                const allDone = ex.sets.length > 0 && ex.sets.every((s) => s.done);
+                const patchSet = (si: number, patch: Partial<{ target: string; reps: string; weight: string; done: boolean }>) => {
+                  const n = structuredClone(log ?? []);
+                  Object.assign(n[ei].sets[si], patch);
+                  saveLog(n);
+                  if (n.every((x) => x.sets.every((y) => y.done))) recordCompletion(day!.name);
+                };
+                return (
                 <Card key={ei}>
-                  <CardContent className="flex flex-col gap-1 pt-4">
-                    <b className="text-sm">{ei + 1}. {ex.name}</b>
+                  <CardContent className="flex flex-col gap-2 pt-4">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-[30px] shrink-0 text-center leading-none"
+                        style={{ fontFamily: "var(--font-marker)", color: "#9CFF3D", fontSize: 26 }}
+                      >
+                        {ei + 1}
+                      </span>
+                      <div className="flex flex-1 flex-col">
+                        <b className="text-sm">{ex.name}</b>
+                        <span className="text-xs text-muted-foreground">{ex.sets.length} serie(s)</span>
+                      </div>
+                      <span
+                        className="flex h-[26px] w-[26px] items-center justify-center rounded-full border-[1.5px] text-[13px] font-bold"
+                        style={allDone ? { background: "#9CFF3D", borderColor: "#9CFF3D", color: "#0a0a0a" } : undefined}
+                      >
+                        ✓
+                      </span>
+                    </div>
                     {(day.exercises[ei]?.media ?? []).length > 0 && (
                       <div className="flex gap-2 overflow-x-auto py-1">
                         {(day.exercises[ei]?.media ?? []).map((url, mi) => (
@@ -382,20 +407,32 @@ export default function ClientePage() {
                         ))}
                       </div>
                     )}
-                    {ex.sets.map((s, si) => (
-                      <div key={si} className="grid grid-cols-[26px_1fr_64px_64px_30px] items-center gap-1.5 py-1 text-sm">
-                        <span className="text-muted-foreground">{si + 1}</span>
-                        <span className="text-xs text-muted-foreground">{s.target}</span>
-                        <Input className="h-8 px-1 text-center" type="number" value={s.weight} placeholder="Kg" disabled={isFutureDate} onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].weight = e.target.value; saveLog(n); }} />
-                        <Input className="h-8 px-1 text-center" type="number" value={s.reps} placeholder="Reps" disabled={isFutureDate} onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].reps = e.target.value; saveLog(n); }} />
-                        {!isFutureDate && (
-                          <button onClick={() => { const n = structuredClone(log ?? []); n[ei].sets[si].done = !n[ei].sets[si].done; saveLog(n); if (n.every((x) => x.sets.every((y) => y.done))) { recordCompletion(day.name); } }} className="h-[26px] w-[26px] rounded-full border-[1.5px] border-border" style={s.done ? { background: "#9CFF3D", borderColor: "#9CFF3D", color: "#0a0a0a" } : undefined}>✓</button>
-                        )}
+                    <div className="border-t border-border">
+                      <div className="grid grid-cols-[26px_1fr_72px_72px_34px] items-center gap-2 px-3 py-2 text-xs font-bold text-muted-foreground">
+                        <span />
+                        <span>Objetivo</span>
+                        <span className="text-center">Kg</span>
+                        <span className="text-center">Reps</span>
+                        <span />
                       </div>
-                    ))}
+                      {ex.sets.map((s, si) => (
+                        <div key={si} className="grid grid-cols-[26px_1fr_72px_72px_34px] items-center gap-2 border-b border-border/60 px-3 py-2 text-[13px] last:border-b-0">
+                          <span className="text-center font-bold text-muted-foreground">{si + 1}</span>
+                          <span className="text-xs leading-snug text-muted-foreground">{s.target}</span>
+                          <Input className="h-8 px-1 text-center font-semibold" type="number" inputMode="decimal" value={s.weight} placeholder="0" disabled={isFutureDate} onChange={(e) => patchSet(si, { weight: e.target.value })} />
+                          <Input className="h-8 px-1 text-center font-semibold" type="number" inputMode="numeric" value={s.reps} placeholder="0" disabled={isFutureDate} onChange={(e) => patchSet(si, { reps: e.target.value })} />
+                          {!isFutureDate ? (
+                            <button onClick={() => patchSet(si, { done: !s.done })} className="h-[26px] w-[26px] rounded-full border-[1.5px] border-border" style={s.done ? { background: "#9CFF3D", borderColor: "#9CFF3D", color: "#0a0a0a" } : undefined}>✓</button>
+                          ) : (
+                            <span />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
               {(() => {
                 if (isFutureDate) return null;
                 const recorded = bundle.history.some((h) => h.date === selDate && h.dayName === day.name);
