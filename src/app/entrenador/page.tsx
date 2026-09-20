@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Trash2 } from "lucide-react";
 import { plantillaRutina } from "@/lib/forja";
 import { useSession } from "@/lib/auth-client";
 
@@ -76,6 +76,7 @@ export default function EntrenadorPage() {
   const [dietDraft, setDietDraft] = useState<Record<string, string>>({});
   const [daysDraft, setDaysDraft] = useState<Bundle["days"]>([]);
   const [msg, setMsg] = useState("");
+  const [savingRoutine, setSavingRoutine] = useState(false);
 
   const loadClients = async () => {
     try {
@@ -138,14 +139,19 @@ export default function EntrenadorPage() {
   };
 
   const saveRoutine = async (days = daysDraft) => {
-    if (!openId) return;
-    await fetch(`/api/clients/${openId}/routine`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ days }),
-    });
-    setMsg("Rutina guardada");
-    setTimeout(() => setMsg(""), 2000);
+    if (!openId || savingRoutine) return;
+    setSavingRoutine(true);
+    try {
+      await fetch(`/api/clients/${openId}/routine`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days }),
+      });
+      setMsg("Rutina guardada");
+      setTimeout(() => setMsg(""), 2000);
+    } finally {
+      setSavingRoutine(false);
+    }
   };
 
   const loadTemplate = async () => {
@@ -297,7 +303,16 @@ export default function EntrenadorPage() {
               <Plus size={16} />
               Agregar día
             </Button>
-            <Button onClick={() => saveRoutine()}>Guardar rutina</Button>
+            <Button onClick={() => saveRoutine()} disabled={savingRoutine}>
+              {savingRoutine ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Guardando…
+                </>
+              ) : (
+                "Guardar rutina"
+              )}
+            </Button>
           </TabsContent>
 
           <TabsContent value="dieta">
