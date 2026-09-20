@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { plantillaRutina } from "@/lib/forja";
+import { useSession } from "@/lib/auth-client";
 
 type Client = { id: string; name: string; code: string };
 type Bundle = {
@@ -63,9 +64,7 @@ const initials = (name: string) =>
     .toUpperCase();
 
 export default function EntrenadorPage() {
-  const [authed, setAuthed] = useState(false);
-  const [pin, setPin] = useState("");
-  const [err, setErr] = useState("");
+  const { data: session, isPending } = useSession();
   const [clients, setClients] = useState<Client[]>([]);
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -74,7 +73,6 @@ export default function EntrenadorPage() {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [dietDraft, setDietDraft] = useState<Record<string, string>>({});
   const [daysDraft, setDaysDraft] = useState<Bundle["days"]>([]);
-  const [newPin, setNewPin] = useState("");
   const [msg, setMsg] = useState("");
 
   const loadClients = async () => {
@@ -83,21 +81,8 @@ export default function EntrenadorPage() {
   };
 
   useEffect(() => {
-    if (authed) loadClients();
-  }, [authed ]);
-
-  const checkPin = async () => {
-    const r = await fetch("/api/trainer/pin", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pinToCheck: pin }),
-    });
-    const j = await r.json();
-    if (j.ok) {
-      setAuthed(true);
-      setErr("");
-    } else setErr("PIN incorrecto.");
-  };
+    if (session) loadClients();
+  }, [session ]);
 
   const openClient = async (id: string) => {
     const r = await fetch(`/api/clients/${id}`);
@@ -169,7 +154,15 @@ export default function EntrenadorPage() {
     await saveRoutine(mapped as Bundle["days"]);
   };
 
-  if (!authed) {
+  if (isPending) {
+    return (
+      <div className="forja-shell gap-4 p-5">
+        <p className="text-sm text-muted-foreground">Cargando…</p>
+      </div>
+    );
+  }
+
+  if (!session) {
     return (
       <div className="forja-shell gap-4 p-5">
         <Button render={<Link href="/" />} variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }}>
@@ -179,23 +172,12 @@ export default function EntrenadorPage() {
         <h1 className="text-2xl font-bold">Acceso entrenador</h1>
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6">
-            <div className="grid gap-2">
-              <Label htmlFor="pin">PIN del entrenador</Label>
-              <Input
-                id="pin"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="••••"
-                onKeyDown={(e) => e.key === "Enter" && checkPin()}
-              />
-            </div>
-            {err && <p className="text-sm text-destructive">{err}</p>}
-            <Button onClick={checkPin}>Entrar</Button>
+            <p className="text-sm text-muted-foreground">
+              Inicia sesión con tu cuenta de entrenador para gestionar a tus clientes.
+            </p>
+            <Button render={<Link href="/login" />}>Ir a iniciar sesión</Button>
           </CardContent>
         </Card>
-        <p className="text-xs text-muted-foreground">PIN inicial: 1234. Puedes cambiarlo en Ajustes.</p>
       </div>
     );
   }
@@ -322,14 +304,6 @@ export default function EntrenadorPage() {
                 <CardTitle className="text-base">Ajustes</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="new-pin">Cambiar PIN entrenador</Label>
-                  <div className="flex gap-2">
-                    <Input id="new-pin" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={6} inputMode="numeric" />
-                    <Button variant="outline" onClick={async () => { await fetch("/api/trainer/pin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin: newPin }) }); setNewPin(""); setMsg("PIN actualizado"); setTimeout(() => setMsg(""), 2000); }}>Guardar</Button>
-                  </div>
-                </div>
-                <Separator />
                 <Button variant="destructive" onClick={async () => { if (confirm("¿Eliminar cliente?")) { await fetch(`/api/clients/${openId}`, { method: "DELETE" }); setOpenId(null); setBundle(null); loadClients(); } }}>
                   <Trash2 size={16} />
                   Eliminar cliente

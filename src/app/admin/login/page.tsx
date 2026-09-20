@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
         <h1 className="text-2xl font-bold">Acceso administrador</h1>
       </div>
       <p className="text-sm text-muted-foreground">
-        Solo cuentas con permiso de administrador. Los entrenadores usan su PIN y los clientes su código personal.
+        Solo cuentas con permiso de administrador. Los entrenadores entran con su cuenta y los clientes con su código personal.
       </p>
       <Card>
         <CardHeader>
