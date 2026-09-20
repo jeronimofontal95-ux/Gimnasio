@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Dumbbell, KeyRound, User } from "lucide-react";
 
@@ -21,6 +22,16 @@ export default function Home() {
         <div className="text-sm font-semibold text-muted-foreground">
           <p>IG: @sergiodvid</p>
           <p>+57 314 4584663</p>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-border">
+          <Image
+            src="/trainer.jpg"
+            alt="Entrenador FORJA"
+            width={800}
+            height={450}
+            className="h-48 w-full object-cover"
+            priority
+          />
         </div>
         <div className="mt-auto flex flex-col gap-3">
           <Button render={<Link href="/entrenador" />} size="lg" className="h-14 justify-between px-5 text-base">
