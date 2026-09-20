@@ -30,6 +30,28 @@ const DIET_LABELS: [string, string][] = [
   ["notas", "Notas"],
 ];
 
+const PROFILE_LABELS: [string, string][] = [
+  ["edad", "Edad"],
+  ["sexo", "Sexo"],
+  ["peso", "Peso (kg)"],
+  ["altura", "Altura (cm)"],
+  ["cuello", "Cuello"],
+  ["pecho", "Pecho"],
+  ["cintura", "Cintura / torso"],
+  ["cadera", "Cadera"],
+  ["bicepsD", "Bíceps derecho"],
+  ["bicepsI", "Bíceps izquierdo"],
+  ["antebrazoD", "Antebrazo derecho"],
+  ["antebrazoI", "Antebrazo izquierdo"],
+  ["cuadricepsD", "Cuádriceps derecho"],
+  ["cuadricepsI", "Cuádriceps izquierdo"],
+  ["gemeloD", "Gemelo derecho"],
+  ["gemeloI", "Gemelo izquierdo"],
+  ["telefono", "Teléfono"],
+  ["fechaInicio", "Fecha de inicio"],
+  ["notas", "Notas / lesiones"],
+];
+
 const initials = (name: string) =>
   name
     .split(/\s+/)
@@ -39,6 +61,7 @@ const initials = (name: string) =>
     .toUpperCase();
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
+const WEEKDAY_FULL = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 const isoLocal = (d: Date) =>
@@ -64,6 +87,7 @@ export default function ClientePage() {
   const [err, setErr] = useState("");
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [tab, setTab] = useState<"rutina" | "dieta" | "datos" | "progreso">("rutina");
+  const [dayIdx, setDayIdx] = useState(0);
   const [log, setLog] = useState<LogExercise[] | null>(null);
   const [selDate, setSelDate] = useState(() => isoLocal(new Date()));
   const [calMonth, setCalMonth] = useState(() => {
@@ -109,18 +133,18 @@ export default function ClientePage() {
   useEffect(() => {
     if (bundle && bundle.days.length) {
       const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
-      loadLog(bundle.client.id, bundle.days[idx >= 0 ? idx : 0].id, selDate);
+      const i = idx >= 0 ? idx : 0;
+      setDayIdx(i);
+      loadLog(bundle.client.id, bundle.days[i].id, selDate);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundle?.client.id]);
 
   const saveLog = async (next: LogExercise[]) => {
     if (isFutureDate) return;
-    if (!bundle || !bundle.days.length) return;
-    const di = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
-    if (di < 0) return;
+    if (!bundle || !bundle.days[dayIdx]) return;
     setLog(next);
-    await fetch(`/api/clients/${bundle.client.id}/logs/${bundle.days[di].id}?date=${selDate}`, {
+    await fetch(`/api/clients/${bundle.client.id}/logs/${bundle.days[dayIdx].id}?date=${selDate}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ payload: next }),
@@ -141,20 +165,14 @@ export default function ClientePage() {
   const gotoDate = (date: string) => {
     setSelDate(date);
     if (!bundle || !bundle.days.length) return;
-    const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(date));
     if (date > todayStr) {
-      // future dates: read-only preview of the scheduled routine, nothing to load
+      // future dates: read-only preview of the selected routine, nothing to load
       setLog(null);
       return;
     }
-    if (idx >= 0) loadLog(bundle.client.id, bundle.days[idx].id, date);
+    const d = bundle.days[dayIdx];
+    if (d) loadLog(bundle.client.id, d.id, date);
     else setLog(null);
-  };
-
-  const goToWeekday = (wd: number) => {
-    let d = todayStr;
-    while (dowOf(d) !== wd) d = addDaysISO(d, 1);
-    gotoDate(d);
   };
 
   if (!bundle) {
@@ -218,8 +236,7 @@ export default function ClientePage() {
 
   const todayStr = isoLocal(new Date());
   const days = bundle.days;
-  const dayIdx = days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
-  const day = dayIdx >= 0 ? days[dayIdx] : null;
+  const day = days[dayIdx] ?? null;
   const isFutureDate = selDate > todayStr;
   const preview: LogExercise[] | null =
     isFutureDate && day
@@ -301,26 +318,27 @@ export default function ClientePage() {
             )}
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {WEEKDAYS.map((w, wd) => {
-              const d = days.find((dd) => dd.weekday === wd);
-              if (!d) return null;
-              return (
-                <Button
-                  key={wd}
-                  size="sm"
-                  variant={wd === dowOf(selDate) ? "default" : "outline"}
-                  className="shrink-0 rounded-full"
-                  onClick={() => goToWeekday(wd)}
-                >
-                  {d.name}
-                </Button>
-              );
-            })}
+            {days.map((d, i) => (
+              <Button
+                key={d.id}
+                size="sm"
+                variant={i === dayIdx ? "default" : "outline"}
+                className="shrink-0 rounded-full"
+                onClick={() => { setDayIdx(i); if (selDate > todayStr) setLog(null); else loadLog(bundle.client.id, d.id, selDate); }}
+              >
+                {d.name}
+                {d.weekday != null && (
+                  <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold">
+                    {WEEKDAYS[d.weekday]}
+                  </span>
+                )}
+              </Button>
+            ))}
           </div>
           {!days.length && <p className="text-sm text-muted-foreground">Tu entrenador todavía no ha creado tu rutina.</p>}
-          {!day && days.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              Día de descanso · No hay rutina programada para el <b className="capitalize">{fmtShort(selDate)}</b>.
+          {day && day.weekday != null && day.weekday !== dowOf(selDate) && (
+            <p className="text-xs text-muted-foreground">
+              Rutina del {WEEKDAY_FULL[day.weekday]} · la estás viendo el <b className="capitalize">{fmtShort(selDate)}</b>.
             </p>
           )}
           {day && (viewLog ?? []).length === 0 && (
@@ -424,14 +442,14 @@ export default function ClientePage() {
           <CardContent className="pt-6">
             <b className="text-sm">Mis medidas</b>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              {Object.entries(bundle.profile ?? {}).filter(([, v]) => v).map(([k, v]) => (
+              {PROFILE_LABELS.filter(([k]) => bundle.profile?.[k]).map(([k, label]) => (
                 <div key={k} className="rounded-md bg-muted p-2 text-center">
-                  <div className="font-extrabold">{v}</div>
-                  <div className="text-[10px] text-muted-foreground">{k}</div>
+                  <div className="font-extrabold">{bundle.profile?.[k]}</div>
+                  <div className="text-[10px] text-muted-foreground">{label}</div>
                 </div>
               ))}
             </div>
-            {!Object.entries(bundle.profile ?? {}).some(([, v]) => v) && <p className="mt-2 text-sm text-muted-foreground">Sin medidas registradas.</p>}
+            {!PROFILE_LABELS.some(([k]) => bundle.profile?.[k]) && <p className="mt-2 text-sm text-muted-foreground">Sin medidas registradas.</p>}
           </CardContent>
         </Card>
       )}
