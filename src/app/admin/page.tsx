@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dumbbell } from "lucide-react";
 import { signOut } from "@/lib/auth-client";
 
 type Me = { email: string; isAdmin: boolean };
@@ -34,55 +40,83 @@ export default function AdminPage() {
 
   if (state === "loading") {
     return (
-      <div className="forja-shell" style={{ padding: 18 }}>
-        <p>Verificando permisos…</p>
+      <div className="forja-shell gap-3 p-5">
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-4 w-64" />
+        <Skeleton className="h-24 w-full" />
       </div>
     );
   }
 
   if (state === "denied") {
     return (
-      <div className="forja-shell" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
-        <h1 style={{ fontSize: 20 }}>Acceso denegado</h1>
-        <p style={{ fontSize: 13, color: "#9a9a9a" }}>Esta zona es solo para administradores.</p>
-        <Link className="forja-btn forja-btn-primary" href="/admin/login">Ir al login de admin</Link>
+      <div className="forja-shell gap-4 p-5">
+        <h1 className="text-2xl font-bold">Acceso denegado</h1>
+        <p className="text-sm text-muted-foreground">Esta zona es solo para administradores.</p>
+        <Button render={<Link href="/admin/login" />}>Ir al acceso de admin</Button>
       </div>
     );
   }
 
   return (
-    <div className="forja-shell" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ fontSize: 20 }}>Panel admin</h1>
-        <button
-          style={{ color: "#9a9a9a" }}
+    <div className="forja-shell gap-4 p-5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Panel admin</h1>
+        <Button
+          variant="ghost"
+          className="text-muted-foreground"
           onClick={async () => {
             await signOut();
             window.location.href = "/admin/login";
           }}
         >
           Salir
-        </button>
+        </Button>
       </div>
-      <p style={{ fontSize: 13, color: "#9a9a9a" }}>Conectado como <b style={{ color: "#fff" }}>{me?.email}</b></p>
-
-      <Link className="forja-btn forja-btn-primary" href="/entrenador">
-        Gestionar programas de clientes
-      </Link>
-      <p style={{ fontSize: 12, color: "#9a9a9a" }}>
-        Desde el panel del entrenador (PIN) creas clientes y les asignas rutinas, dietas y seguimiento.
+      <p className="text-sm text-muted-foreground">
+        Conectado como <b className="text-foreground">{me?.email}</b>
       </p>
 
-      <div className="forja-card">
-        <span className="forja-label">Cuentas registradas ({users.length})</span>
-        {users.map((u) => (
-          <div key={u.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid #262626", fontSize: 13 }}>
-            <span>{u.name} — {u.email}</span>
-            {u.isAdmin && <b style={{ color: "#9CFF3D" }}>ADMIN</b>}
-          </div>
-        ))}
-        {!users.length && <p style={{ fontSize: 13, color: "#9a9a9a" }}>Sin cuentas todavía.</p>}
-      </div>
+      <Button render={<Link href="/entrenador" />} size="lg">
+        <Dumbbell size={18} />
+        Gestionar programas de clientes
+      </Button>
+      <p className="-mt-2 text-xs text-muted-foreground">
+        Crea clientes y asígnales rutinas, dietas y seguimiento.
+      </p>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Cuentas registradas ({users.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {users.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cuenta</TableHead>
+                  <TableHead className="text-right">Rol</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell>
+                      <div className="font-medium">{u.name}</div>
+                      <div className="text-xs text-muted-foreground">{u.email}</div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {u.isAdmin ? <Badge>ADMIN</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sin cuentas todavía.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -3,6 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, ShieldCheck } from "lucide-react";
 import { signIn, signOut } from "@/lib/auth-client";
 
 export default function AdminLoginPage() {
@@ -35,33 +40,51 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="forja-shell" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
-      <Link href="/" style={{ color: "#9CFF3D" }}>← Inicio</Link>
-      <h1 style={{ fontSize: 20 }}>Acceso administrador</h1>
-      <p style={{ fontSize: 13, color: "#9a9a9a" }}>
-        Solo cuentas con permiso de administrador. Los entrenadores usan el PIN en /entrenador y los clientes su código en /cliente.
-      </p>
-      <div className="forja-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div>
-          <label className="forja-label">Email de administrador</label>
-          <input className="forja-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@forja.com" />
-        </div>
-        <div>
-          <label className="forja-label">Contraseña</label>
-          <input
-            className="forja-input"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            onKeyDown={(e) => e.key === "Enter" && doLogin()}
-          />
-        </div>
-        <button className="forja-btn forja-btn-primary" onClick={doLogin} disabled={busy}>
-          {busy ? "Verificando…" : "Entrar como admin"}
-        </button>
-        {msg && <p style={{ fontSize: 13, color: "#FF5C5C" }}>{msg}</p>}
+    <div className="forja-shell gap-4 p-5">
+      <Button render={<Link href="/" />} variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }}>
+        <ChevronLeft size={18} />
+        Inicio
+      </Button>
+      <div className="flex items-center gap-2">
+        <ShieldCheck size={22} style={{ color: "#9CFF3D" }} />
+        <h1 className="text-2xl font-bold">Acceso administrador</h1>
       </div>
+      <p className="text-sm text-muted-foreground">
+        Solo cuentas con permiso de administrador. Los entrenadores usan su PIN y los clientes su código personal.
+      </p>
+      <Card>
+        <CardHeader>
+          <CardTitle>Entrar</CardTitle>
+          <CardDescription>Zona restringida.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="admin-email">Email de administrador</Label>
+            <Input
+              id="admin-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@forja.com"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="admin-pass">Contraseña</Label>
+            <Input
+              id="admin-pass"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              onKeyDown={(e) => e.key === "Enter" && doLogin()}
+            />
+          </div>
+          <Button onClick={doLogin} disabled={busy}>
+            {busy ? "Verificando…" : "Entrar como admin"}
+          </Button>
+          {msg && <p className="text-sm text-destructive">{msg}</p>}
+        </CardContent>
+      </Card>
     </div>
   );
 }

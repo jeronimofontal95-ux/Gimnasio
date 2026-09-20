@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { ChevronLeft } from "lucide-react";
 import type { LogExercise } from "@/db/schema";
 
 type Client = { id: string; name: string; code: string };
@@ -13,6 +21,22 @@ type Bundle = {
   weights: { date: string; kg: string }[];
   history: { date: string; dayName: string }[];
 };
+
+const DIET_LABELS: [string, string][] = [
+  ["desayuno", "Desayuno"],
+  ["almuerzo", "Almuerzo"],
+  ["cena", "Cena"],
+  ["snacks", "Snacks / suplementos"],
+  ["notas", "Notas"],
+];
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
 export default function ClientePage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -67,26 +91,58 @@ export default function ClientePage() {
   if (!bundle) {
     if (!picked) {
       return (
-        <div className="forja-shell" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-          <Link href="/" style={{ color: "#9CFF3D" }}>← Volver</Link>
-          <h1 style={{ fontSize: 20 }}>Selecciona tu nombre</h1>
-          {clients.map((c) => (
-            <button key={c.id} onClick={() => setPicked(c)} style={{ textAlign: "left", background: "#101010", border: "1px solid #262626", borderRadius: 6, padding: 12 }}><b>{c.name}</b></button>
-          ))}
-          {!clients.length && <p style={{ color: "#9a9a9a" }}>Tu entrenador aún no te ha registrado.</p>}
+        <div className="forja-shell gap-3 p-5">
+          <Button render={<Link href="/" />} variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }}>
+            <ChevronLeft size={18} />
+            Volver
+          </Button>
+          <h1 className="text-2xl font-bold">Selecciona tu nombre</h1>
+          <div className="flex flex-col gap-2">
+            {clients.map((c) => (
+              <Card key={c.id} className="cursor-pointer transition-colors hover:border-primary/60" onClick={() => setPicked(c)}>
+                <CardContent className="flex items-center gap-3 py-3">
+                  <Avatar>
+                    <AvatarFallback>{initials(c.name)}</AvatarFallback>
+                  </Avatar>
+                  <b>{c.name}</b>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {!clients.length && <p className="text-sm text-muted-foreground">Tu entrenador aún no te ha registrado.</p>}
         </div>
       );
     }
     return (
-      <div className="forja-shell" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-        <button style={{ color: "#9CFF3D", textAlign: "left" }} onClick={() => setPicked(null)}>← Nombres</button>
-        <h1 style={{ fontSize: 20 }}>{picked.name}</h1>
-        <div className="forja-card">
-          <label className="forja-label">Código de acceso (4 dígitos)</label>
-          <input className="forja-input" value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={4} placeholder="••••" />
-          {err && <p style={{ color: "#FF5C5C", fontSize: 13 }}>{err}</p>}
-          <button className="forja-btn forja-btn-primary" style={{ marginTop: 12 }} onClick={login}>Entrar</button>
+      <div className="forja-shell gap-4 p-5">
+        <Button variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }} onClick={() => setPicked(null)}>
+          <ChevronLeft size={18} />
+          Nombres
+        </Button>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-11 w-11">
+            <AvatarFallback>{initials(picked.name)}</AvatarFallback>
+          </Avatar>
+          <h1 className="text-2xl font-bold">{picked.name}</h1>
         </div>
+        <Card>
+          <CardContent className="flex flex-col gap-4 pt-6">
+            <div className="grid gap-2">
+              <Label htmlFor="code">Código de acceso</Label>
+              <Input
+                id="code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="••••"
+                onKeyDown={(e) => e.key === "Enter" && login()}
+              />
+            </div>
+            {err && <p className="text-sm text-destructive">{err}</p>}
+            <Button onClick={login}>Entrar</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -98,42 +154,61 @@ export default function ClientePage() {
   const pct = total ? Math.round((done / total) * 100) : 0;
 
   return (
-    <div className="forja-shell" style={{ padding: 18, paddingBottom: 90, display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <b>{bundle.client.name}</b>
-        <button style={{ color: "#9a9a9a" }} onClick={() => { setBundle(null); setPicked(null); setCode(""); }}>Salir</button>
+    <div className="forja-shell gap-3 p-5 pb-24">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Avatar>
+            <AvatarFallback>{initials(bundle.client.name)}</AvatarFallback>
+          </Avatar>
+          <b>{bundle.client.name}</b>
+        </div>
+        <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setBundle(null); setPicked(null); setCode(""); }}>
+          Salir
+        </Button>
       </div>
 
       {tab === "rutina" && (
         <>
-          <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {days.map((d, i) => (
-              <button key={d.id} onClick={() => { setDayIdx(i); loadLog(bundle.client.id, d.id); }} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 20, border: "1.5px solid #333", background: i === dayIdx ? "#9CFF3D" : "transparent", color: i === dayIdx ? "#0a0a0a" : "#9a9a9a", fontWeight: 600, fontSize: 13 }}>{d.name}</button>
+              <Button
+                key={d.id}
+                size="sm"
+                variant={i === dayIdx ? "default" : "outline"}
+                className="shrink-0 rounded-full"
+                onClick={() => { setDayIdx(i); loadLog(bundle.client.id, d.id); }}
+              >
+                {d.name}
+              </Button>
             ))}
           </div>
-          {!days.length && <p style={{ color: "#9a9a9a" }}>Tu entrenador todavía no ha creado tu rutina.</p>}
+          {!days.length && <p className="text-sm text-muted-foreground">Tu entrenador todavía no ha creado tu rutina.</p>}
           {day && (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1, height: 8, background: "#262626", borderRadius: 8 }}>
-                  <div style={{ width: `${pct}%`, height: "100%", background: "#9CFF3D", borderRadius: 8 }} />
-                </div>
-                <b>{pct}%</b>
+              <div className="flex items-center gap-3">
+                <Progress value={pct} className="flex-1" />
+                <b className="text-sm">{pct}%</b>
               </div>
-              {day.warmup && <p style={{ background: "#101010", padding: 10, borderRadius: 6, fontSize: 13 }}>🔸 {day.warmup}</p>}
+              {day.warmup && (
+                <Card>
+                  <CardContent className="py-3 text-sm">🔸 {day.warmup}</CardContent>
+                </Card>
+              )}
               {(log ?? []).map((ex, ei) => (
-                <div key={ei} style={{ background: "#101010", border: "1px solid #262626", borderRadius: 6, padding: 12 }}>
-                  <b>{ei + 1}. {ex.name}</b>
-                  {ex.sets.map((s, si) => (
-                    <div key={si} style={{ display: "grid", gridTemplateColumns: "26px 1fr 64px 64px 30px", gap: 6, alignItems: "center", padding: "6px 0", fontSize: 13 }}>
-                      <span style={{ color: "#9a9a9a" }}>{si + 1}</span>
-                      <span style={{ color: "#9a9a9a", fontSize: 12 }}>{s.target}</span>
-                      <input className="forja-input" style={{ padding: "6px", textAlign: "center" }} type="number" value={s.weight} placeholder="Kg" onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].weight = e.target.value; saveLog(n); }} />
-                      <input className="forja-input" style={{ padding: "6px", textAlign: "center" }} type="number" value={s.reps} placeholder="Reps" onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].reps = e.target.value; saveLog(n); }} />
-                      <button onClick={() => { const n = structuredClone(log ?? []); n[ei].sets[si].done = !n[ei].sets[si].done; saveLog(n); if (n.every((x) => x.sets.every((y) => y.done))) { fetch(`/api/clients/${bundle.client.id}/progress`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "history", dayName: day.name }) }); } }} style={{ width: 26, height: 26, borderRadius: "50%", background: s.done ? "#9CFF3D" : "transparent", border: "1.5px solid #333" }}>✓</button>
-                    </div>
-                  ))}
-                </div>
+                <Card key={ei}>
+                  <CardContent className="flex flex-col gap-1 pt-4">
+                    <b className="text-sm">{ei + 1}. {ex.name}</b>
+                    {ex.sets.map((s, si) => (
+                      <div key={si} className="grid grid-cols-[26px_1fr_64px_64px_30px] items-center gap-1.5 py-1 text-sm">
+                        <span className="text-muted-foreground">{si + 1}</span>
+                        <span className="text-xs text-muted-foreground">{s.target}</span>
+                        <Input className="h-8 px-1 text-center" type="number" value={s.weight} placeholder="Kg" onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].weight = e.target.value; saveLog(n); }} />
+                        <Input className="h-8 px-1 text-center" type="number" value={s.reps} placeholder="Reps" onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].reps = e.target.value; saveLog(n); }} />
+                        <button onClick={() => { const n = structuredClone(log ?? []); n[ei].sets[si].done = !n[ei].sets[si].done; saveLog(n); if (n.every((x) => x.sets.every((y) => y.done))) { fetch(`/api/clients/${bundle.client.id}/progress`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "history", dayName: day.name }) }); } }} className="h-[26px] w-[26px] rounded-full border-[1.5px] border-border" style={s.done ? { background: "#9CFF3D", borderColor: "#9CFF3D", color: "#0a0a0a" } : undefined}>✓</button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
               ))}
             </>
           )}
@@ -141,39 +216,48 @@ export default function ClientePage() {
       )}
 
       {tab === "dieta" && (
-        <div className="forja-card">
-          {[["desayuno", "Desayuno"], ["almuerzo", "Almuerzo"], ["cena", "Cena"], ["snacks", "Snacks / suplementos"], ["notas", "Notas"]].map(([k, label]) => (
-            bundle.diet?.[k] ? <div key={k} style={{ marginBottom: 10 }}><b style={{ color: "#9CFF3D", fontSize: 13 }}>{label}</b><p style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{bundle.diet[k]}</p></div> : null
-          ))}
-          {!bundle.diet?.desayuno && !bundle.diet?.almuerzo && !bundle.diet?.cena && <p style={{ color: "#9a9a9a" }}>Sin plan asignado.</p>}
-        </div>
+        <Card>
+          <CardContent className="flex flex-col gap-3 pt-6">
+            {DIET_LABELS.map(([k, label]) => (
+              bundle.diet?.[k] ? <div key={k}><Badge variant="secondary" className="mb-1">{label}</Badge><p className="whitespace-pre-wrap text-sm">{bundle.diet[k]}</p></div> : null
+            ))}
+            {!bundle.diet?.desayuno && !bundle.diet?.almuerzo && !bundle.diet?.cena && <p className="text-sm text-muted-foreground">Sin plan asignado.</p>}
+          </CardContent>
+        </Card>
       )}
 
       {tab === "datos" && (
-        <div className="forja-card">
-          <b>Mis medidas</b>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 10 }}>
-            {Object.entries(bundle.profile ?? {}).filter(([, v]) => v).map(([k, v]) => (
-              <div key={k} style={{ background: "#0d0d0d", padding: 8, borderRadius: 6, textAlign: "center" }}>
-                <div style={{ fontWeight: 800 }}>{v}</div>
-                <div style={{ fontSize: 10, color: "#9a9a9a" }}>{k}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <b className="text-sm">Mis medidas</b>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {Object.entries(bundle.profile ?? {}).filter(([, v]) => v).map(([k, v]) => (
+                <div key={k} className="rounded-md bg-muted p-2 text-center">
+                  <div className="font-extrabold">{v}</div>
+                  <div className="text-[10px] text-muted-foreground">{k}</div>
+                </div>
+              ))}
+            </div>
+            {!Object.entries(bundle.profile ?? {}).some(([, v]) => v) && <p className="mt-2 text-sm text-muted-foreground">Sin medidas registradas.</p>}
+          </CardContent>
+        </Card>
       )}
 
       {tab === "progreso" && (
-        <div className="forja-card">
-          <b>Rutinas completadas ({bundle.history.length})</b>
-          {bundle.history.slice(0, 20).map((h, i) => <p key={i} style={{ fontSize: 13 }}>{h.dayName} — {h.date}</p>)}
-          {!bundle.history.length && <p style={{ color: "#9a9a9a" }}>Aún no has completado ninguna. ¡Vamos!</p>}
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <b className="text-sm">Rutinas completadas ({bundle.history.length})</b>
+            {bundle.history.slice(0, 20).map((h, i) => <p key={i} className="text-sm">{h.dayName} — {h.date}</p>)}
+            {!bundle.history.length && <p className="mt-1 text-sm text-muted-foreground">Aún no has completado ninguna. ¡Vamos!</p>}
+          </CardContent>
+        </Card>
       )}
 
-      <div style={{ position: "sticky", bottom: 0, background: "#171717", borderTop: "1px solid #262626", display: "flex", padding: 8 }}>
+      <div className="fixed bottom-0 left-1/2 flex w-full max-w-[520px] -translate-x-1/2 border-t border-border bg-background/95 p-2 backdrop-blur">
         {(["rutina", "dieta", "datos", "progreso"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: 8, color: tab === t ? "#9CFF3D" : "#9a9a9a", fontSize: 12, fontWeight: 600, textTransform: "capitalize" }}>{t}</button>
+          <Button key={t} variant={tab === t ? "secondary" : "ghost"} className="flex-1 capitalize" onClick={() => setTab(t)}>
+            {t}
+          </Button>
         ))}
       </div>
     </div>

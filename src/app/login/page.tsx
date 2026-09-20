@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft } from "lucide-react";
 import { signIn, signUp, signOut, useSession } from "@/lib/auth-client";
 
 export default function LoginPage() {
@@ -24,48 +29,79 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="forja-shell" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
-      <Link href="/" style={{ color: "#9CFF3D" }}>← Inicio</Link>
-      <h1 style={{ fontSize: 20 }}>Cuenta de entrenador</h1>
-      <p style={{ fontSize: 13, color: "#9a9a9a" }}>
-        better-auth con email + contraseña, guardado en Neon (tablas user, session, account, verification).
-        Los clientes siguen entrando con su código de 4 dígitos.
-      </p>
+    <div className="forja-shell gap-4 p-5">
+      <Button render={<Link href="/" />} variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }}>
+        <ChevronLeft size={18} />
+        Inicio
+      </Button>
+      <div>
+        <h1 className="text-2xl font-bold">Cuenta de entrenador</h1>
+        <p className="text-sm text-muted-foreground">
+          Accede con tu email y contraseña para gestionar a tus clientes. ¿Eres cliente? Entra con tu código
+          personal en la página de cliente.
+        </p>
+      </div>
 
       {isPending ? (
-        <p>Cargando sesión…</p>
+        <p className="text-sm text-muted-foreground">Cargando sesión…</p>
       ) : session ? (
-        <div className="forja-card">
-          <p>Sesión activa: <b>{session.user.email}</b></p>
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <Link className="forja-btn forja-btn-primary" href="/entrenador">Ir al panel</Link>
-            <button className="forja-btn forja-btn-navy" onClick={() => signOut()}>Cerrar sesión</button>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col gap-4 pt-6">
+            <p className="text-sm">
+              Sesión activa: <b>{session.user.email}</b>
+            </p>
+            <div className="flex gap-2">
+              <Button render={<Link href="/entrenador" />}>Ir al panel</Button>
+              <Button variant="secondary" onClick={() => signOut()}>
+                Cerrar sesión
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="forja-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div>
-            <label className="forja-label">Nombre (solo registro)</label>
-            <input className="forja-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sergio" />
-          </div>
-          <div>
-            <label className="forja-label">Email</label>
-            <input className="forja-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@forja.com" />
-          </div>
-          <div>
-            <label className="forja-label">Contraseña</label>
-            <input className="forja-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="forja-btn forja-btn-primary" onClick={doSignIn}>Entrar</button>
-            <button className="forja-btn forja-btn-outline" onClick={doSignUp}>Crear cuenta</button>
-          </div>
-          {msg && <p style={{ fontSize: 13 }}>{msg}</p>}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Entrar o crear cuenta</CardTitle>
+            <CardDescription>Solo para entrenadores.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="login-name">Nombre (solo registro)</Label>
+              <Input id="login-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sergio" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="login-email">Email</Label>
+              <Input
+                id="login-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="coach@forja.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="login-pass">Contraseña</Label>
+              <Input
+                id="login-pass"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={doSignIn}>Entrar</Button>
+              <Button variant="outline" onClick={doSignUp}>
+                Crear cuenta
+              </Button>
+            </div>
+            {msg && <p className="text-sm">{msg}</p>}
+          </CardContent>
+        </Card>
       )}
-      <Link href="/admin/login" style={{ color: "#9a9a9a", fontSize: 12, textAlign: "center" }}>
-        ¿Eres administrador? Entrar en /admin/login
-      </Link>
+      <Button render={<Link href="/admin/login" />} variant="link" className="mx-auto text-xs text-muted-foreground">
+        ¿Eres administrador? Acceso administradores
+      </Button>
     </div>
   );
 }

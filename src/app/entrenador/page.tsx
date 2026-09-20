@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { plantillaRutina } from "@/lib/forja";
 
 type Client = { id: string; name: string; code: string };
@@ -13,6 +23,44 @@ type Bundle = {
   weights: { date: string; kg: string }[];
   history: { date: string; dayName: string }[];
 };
+
+const PROFILE_FIELDS: [string, string][] = [
+  ["edad", "Edad"],
+  ["sexo", "Sexo (F/M)"],
+  ["peso", "Peso (kg)"],
+  ["altura", "Altura (cm)"],
+  ["cuello", "Cuello"],
+  ["pecho", "Pecho"],
+  ["cintura", "Cintura / torso"],
+  ["cadera", "Cadera"],
+  ["bicepsD", "Bíceps derecho"],
+  ["bicepsI", "Bíceps izquierdo"],
+  ["antebrazoD", "Antebrazo derecho"],
+  ["antebrazoI", "Antebrazo izquierdo"],
+  ["cuadricepsD", "Cuádriceps derecho"],
+  ["cuadricepsI", "Cuádriceps izquierdo"],
+  ["gemeloD", "Gemelo derecho"],
+  ["gemeloI", "Gemelo izquierdo"],
+  ["telefono", "Teléfono"],
+  ["fechaInicio", "Fecha de inicio"],
+  ["notas", "Notas / lesiones"],
+];
+
+const DIET_FIELDS: [string, string][] = [
+  ["desayuno", "Desayuno"],
+  ["almuerzo", "Almuerzo"],
+  ["cena", "Cena"],
+  ["snacks", "Snacks / suplementos"],
+  ["notas", "Notas"],
+];
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
 export default function EntrenadorPage() {
   const [authed, setAuthed] = useState(false);
@@ -123,122 +171,208 @@ export default function EntrenadorPage() {
 
   if (!authed) {
     return (
-      <div className="forja-shell" style={{ padding: 18 }}>
-        <Link href="/" style={{ color: "#9CFF3D" }}>← Volver</Link>
-        <h1 style={{ fontSize: 22, margin: "12px 0" }}>Acceso entrenador</h1>
-        <div className="forja-card">
-          <label className="forja-label">PIN del entrenador</label>
-          <input className="forja-input" value={pin} onChange={(e) => setPin(e.target.value)} inputMode="numeric" maxLength={6} placeholder="••••" />
-          {err && <p style={{ color: "#FF5C5C", fontSize: 13 }}>{err}</p>}
-          <button className="forja-btn forja-btn-primary" style={{ marginTop: 12 }} onClick={checkPin}>Entrar</button>
-        </div>
-        <p style={{ color: "#9a9a9a", fontSize: 12 }}>PIN por defecto: 1234. Guárdalo en Neon vía Ajustes → PIN.</p>
+      <div className="forja-shell gap-4 p-5">
+        <Button render={<Link href="/" />} variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }}>
+          <ChevronLeft size={18} />
+          Volver
+        </Button>
+        <h1 className="text-2xl font-bold">Acceso entrenador</h1>
+        <Card>
+          <CardContent className="flex flex-col gap-4 pt-6">
+            <div className="grid gap-2">
+              <Label htmlFor="pin">PIN del entrenador</Label>
+              <Input
+                id="pin"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="••••"
+                onKeyDown={(e) => e.key === "Enter" && checkPin()}
+              />
+            </div>
+            {err && <p className="text-sm text-destructive">{err}</p>}
+            <Button onClick={checkPin}>Entrar</Button>
+          </CardContent>
+        </Card>
+        <p className="text-xs text-muted-foreground">PIN inicial: 1234. Puedes cambiarlo en Ajustes.</p>
       </div>
     );
   }
 
   if (openId && bundle) {
     return (
-      <div className="forja-shell" style={{ padding: 18, gap: 12, display: "flex", flexDirection: "column" }}>
-        <button style={{ color: "#9CFF3D", textAlign: "left" }} onClick={() => { setOpenId(null); setBundle(null); loadClients(); }}>← Clientes</button>
-        <h1 style={{ fontSize: 20 }}>{bundle.client.name} <span style={{ fontSize: 12, color: "#9a9a9a" }}>código {bundle.client.code}</span></h1>
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #262626" }}>
-          {(["datos", "rutina", "dieta", "progreso"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={{ padding: "10px", color: tab === t ? "#fff" : "#9a9a9a", borderBottom: tab === t ? "3px solid #9CFF3D" : "none", textTransform: "capitalize" }}>{t}</button>
-          ))}
+      <div className="forja-shell gap-4 p-5">
+        <Button variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }} onClick={() => { setOpenId(null); setBundle(null); loadClients(); }}>
+          <ChevronLeft size={18} />
+          Clientes
+        </Button>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-11 w-11">
+            <AvatarFallback>{initials(bundle.client.name)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-xl font-bold leading-tight">{bundle.client.name}</h1>
+            <Badge variant="secondary" className="mt-1">
+              código {bundle.client.code}
+            </Badge>
+          </div>
         </div>
 
-        {tab === "datos" && (
-          <div className="forja-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[["edad", "Edad"], ["sexo", "Sexo (F/M)"], ["peso", "Peso (kg)"], ["altura", "Altura (cm)"], ["cuello", "Cuello"], ["pecho", "Pecho"], ["cintura", "Cintura / torso"], ["cadera", "Cadera"], ["bicepsD", "Bíceps derecho"], ["bicepsI", "Bíceps izquierdo"], ["antebrazoD", "Antebrazo derecho"], ["antebrazoI", "Antebrazo izquierdo"], ["cuadricepsD", "Cuádriceps derecho"], ["cuadricepsI", "Cuádriceps izquierdo"], ["gemeloD", "Gemelo derecho"], ["gemeloI", "Gemelo izquierdo"], ["telefono", "Teléfono"], ["fechaInicio", "Fecha de inicio"], ["notas", "Notas / lesiones"]].map(([k, label]) => (
-              <div key={k}>
-                <label className="forja-label">{label}</label>
-                <input className="forja-input" value={draft[k] ?? ""} onChange={(e) => setDraft({ ...draft, [k]: e.target.value })} />
-              </div>
-            ))}
-            <button className="forja-btn forja-btn-primary" onClick={saveProfile}>Guardar datos</button>
-          </div>
-        )}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="datos">Datos</TabsTrigger>
+            <TabsTrigger value="rutina">Rutina</TabsTrigger>
+            <TabsTrigger value="dieta">Dieta</TabsTrigger>
+            <TabsTrigger value="progreso">Progreso</TabsTrigger>
+          </TabsList>
 
-        {tab === "rutina" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, color: "#9a9a9a" }}>{daysDraft.length} día(s)</span>
-              <button style={{ color: "#9CFF3D" }} onClick={loadTemplate}>Cargar plantilla</button>
-            </div>
-            {daysDraft.map((d, i) => (
-              <div key={i} className="forja-card">
-                <input className="forja-input" value={d.name} onChange={(e) => { const c = [...daysDraft]; c[i] = { ...c[i], name: e.target.value }; setDaysDraft(c); }} />
-                <input className="forja-input" style={{ marginTop: 8 }} value={d.warmup ?? ""} placeholder="Calentamiento…" onChange={(e) => { const c = [...daysDraft]; c[i] = { ...c[i], warmup: e.target.value }; setDaysDraft(c); }} />
-                {(d.exercises ?? []).map((ex, j) => (
-                  <div key={j} style={{ borderTop: "1px solid #262626", marginTop: 8, paddingTop: 8 }}>
-                    <input className="forja-input" value={ex.name} placeholder="Ejercicio" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].name = e.target.value; setDaysDraft(c); }} />
-                    <input className="forja-input" style={{ marginTop: 6 }} value={(ex.media ?? []).join(" ")} placeholder="GIF URL (máx 3, separados por espacio)" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].media = e.target.value.split(/\s+/).filter(Boolean).slice(0, 3); setDaysDraft(c); }} />
-                    <textarea className="forja-input" style={{ marginTop: 6 }} rows={3} value={(ex.sets ?? []).join("\n")} placeholder="Una serie por línea" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].sets = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); setDaysDraft(c); }} />
-                    <button style={{ color: "#FF5C5C", fontSize: 13 }} onClick={() => { const c = structuredClone(daysDraft); c[i].exercises.splice(j, 1); setDaysDraft(c); }}>Eliminar ejercicio</button>
+          <TabsContent value="datos">
+            <Card>
+              <CardContent className="flex flex-col gap-4 pt-6">
+                {PROFILE_FIELDS.map(([k, label]) => (
+                  <div key={k} className="grid gap-2">
+                    <Label htmlFor={`pf-${k}`}>{label}</Label>
+                    <Input id={`pf-${k}`} value={draft[k] ?? ""} onChange={(e) => setDraft({ ...draft, [k]: e.target.value })} />
                   </div>
                 ))}
-                <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-                  <button style={{ color: "#9CFF3D", fontSize: 13 }} onClick={() => { const c = structuredClone(daysDraft); c[i].exercises.push({ id: "", name: "", media: [], sets: [] }); setDaysDraft(c); }}>+ Ejercicio</button>
-                  <button style={{ color: "#FF5C5C", fontSize: 13 }} onClick={() => setDaysDraft(daysDraft.filter((_, x) => x !== i))}>Eliminar día</button>
+                <Button onClick={saveProfile}>Guardar datos</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="rutina" className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{daysDraft.length} día(s)</span>
+              <Button variant="link" className="h-auto p-0" style={{ color: "#9CFF3D" }} onClick={loadTemplate}>
+                Cargar plantilla
+              </Button>
+            </div>
+            {daysDraft.map((d, i) => (
+              <Card key={i}>
+                <CardContent className="flex flex-col gap-2 pt-4">
+                  <Input value={d.name} onChange={(e) => { const c = [...daysDraft]; c[i] = { ...c[i], name: e.target.value }; setDaysDraft(c); }} />
+                  <Input value={d.warmup ?? ""} placeholder="Calentamiento…" onChange={(e) => { const c = [...daysDraft]; c[i] = { ...c[i], warmup: e.target.value }; setDaysDraft(c); }} />
+                  {(d.exercises ?? []).map((ex, j) => (
+                    <div key={j} className="flex flex-col gap-2">
+                      <Separator className="my-1" />
+                      <Input value={ex.name} placeholder="Ejercicio" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].name = e.target.value; setDaysDraft(c); }} />
+                      <Input value={(ex.media ?? []).join(" ")} placeholder="GIF URL (máx 3, separados por espacio)" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].media = e.target.value.split(/\s+/).filter(Boolean).slice(0, 3); setDaysDraft(c); }} />
+                      <Textarea rows={3} value={(ex.sets ?? []).join("\n")} placeholder="Una serie por línea" onChange={(e) => { const c = structuredClone(daysDraft); c[i].exercises[j].sets = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); setDaysDraft(c); }} />
+                      <Button variant="ghost" size="sm" className="w-fit text-destructive" onClick={() => { const c = structuredClone(daysDraft); c[i].exercises.splice(j, 1); setDaysDraft(c); }}>
+                        <Trash2 size={14} />
+                        Eliminar ejercicio
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => { const c = structuredClone(daysDraft); c[i].exercises.push({ id: "", name: "", media: [], sets: [] }); setDaysDraft(c); }}>
+                      <Plus size={14} />
+                      Ejercicio
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDaysDraft(daysDraft.filter((_, x) => x !== i))}>
+                      Eliminar día
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            <Button variant="outline" onClick={() => setDaysDraft([...daysDraft, { id: "", name: "Nuevo día", warmup: "", exercises: [] }])}>
+              <Plus size={16} />
+              Agregar día
+            </Button>
+            <Button onClick={() => saveRoutine()}>Guardar rutina</Button>
+          </TabsContent>
+
+          <TabsContent value="dieta">
+            <Card>
+              <CardContent className="flex flex-col gap-4 pt-6">
+                {DIET_FIELDS.map(([k, label]) => (
+                  <div key={k} className="grid gap-2">
+                    <Label htmlFor={`diet-${k}`}>{label}</Label>
+                    <Textarea id={`diet-${k}`} rows={2} value={dietDraft[k] ?? ""} onChange={(e) => setDietDraft({ ...dietDraft, [k]: e.target.value })} />
+                  </div>
+                ))}
+                <Button onClick={saveDiet}>Guardar dieta</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="progreso" className="flex flex-col gap-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Pesos ({bundle.weights.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {bundle.weights.slice(0, 8).map((w, i) => <p key={i} className="text-sm">{w.date} — <b>{w.kg} kg</b></p>)}
+                {!bundle.weights.length && <p className="text-sm text-muted-foreground">Sin registros.</p>}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Rutinas completadas ({bundle.history.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {bundle.history.slice(0, 15).map((h, i) => <p key={i} className="text-sm">{h.dayName} — {h.date}</p>)}
+                {!bundle.history.length && <p className="text-sm text-muted-foreground">Sin registros.</p>}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Ajustes</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="new-pin">Cambiar PIN entrenador</Label>
+                  <div className="flex gap-2">
+                    <Input id="new-pin" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={6} inputMode="numeric" />
+                    <Button variant="outline" onClick={async () => { await fetch("/api/trainer/pin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin: newPin }) }); setNewPin(""); setMsg("PIN actualizado"); setTimeout(() => setMsg(""), 2000); }}>Guardar</Button>
+                  </div>
                 </div>
-              </div>
-            ))}
-            <button className="forja-btn forja-btn-outline" onClick={() => setDaysDraft([...daysDraft, { id: "", name: "Nuevo día", warmup: "", exercises: [] }])}>+ Agregar día</button>
-            <button className="forja-btn forja-btn-primary" onClick={() => saveRoutine()}>Guardar rutina</button>
-          </div>
-        )}
-
-        {tab === "dieta" && (
-          <div className="forja-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[["desayuno", "Desayuno"], ["almuerzo", "Almuerzo"], ["cena", "Cena"], ["snacks", "Snacks / suplementos"], ["notas", "Notas"]].map(([k, label]) => (
-              <div key={k}>
-                <label className="forja-label">{label}</label>
-                <textarea className="forja-input" rows={2} value={dietDraft[k] ?? ""} onChange={(e) => setDietDraft({ ...dietDraft, [k]: e.target.value })} />
-              </div>
-            ))}
-            <button className="forja-btn forja-btn-primary" onClick={saveDiet}>Guardar dieta</button>
-          </div>
-        )}
-
-        {tab === "progreso" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="forja-card">
-              <span className="forja-label">Pesos ({bundle.weights.length})</span>
-              {bundle.weights.slice(0, 8).map((w, i) => <p key={i} style={{ fontSize: 13 }}>{w.date} — <b>{w.kg} kg</b></p>)}
-            </div>
-            <div className="forja-card">
-              <span className="forja-label">Rutinas completadas ({bundle.history.length})</span>
-              {bundle.history.slice(0, 15).map((h, i) => <p key={i} style={{ fontSize: 13 }}>{h.dayName} — {h.date}</p>)}
-            </div>
-            <div className="forja-card">
-              <label className="forja-label">Cambiar PIN entrenador</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input className="forja-input" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={6} inputMode="numeric" />
-                <button className="forja-btn forja-btn-outline" style={{ width: "auto" }} onClick={async () => { await fetch("/api/trainer/pin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin: newPin }) }); setNewPin(""); setMsg("PIN actualizado"); setTimeout(() => setMsg(""), 2000); }}>Guardar</button>
-              </div>
-            </div>
-            <button style={{ color: "#FF5C5C" }} onClick={async () => { if (confirm("¿Eliminar cliente?")) { await fetch(`/api/clients/${openId}`, { method: "DELETE" }); setOpenId(null); setBundle(null); loadClients(); } }}>Eliminar cliente</button>
-          </div>
-        )}
-        {msg && <p style={{ color: "#9CFF3D", fontSize: 13 }}>{msg}</p>}
+                <Separator />
+                <Button variant="destructive" onClick={async () => { if (confirm("¿Eliminar cliente?")) { await fetch(`/api/clients/${openId}`, { method: "DELETE" }); setOpenId(null); setBundle(null); loadClients(); } }}>
+                  <Trash2 size={16} />
+                  Eliminar cliente
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+        {msg && <p className="text-sm" style={{ color: "#9CFF3D" }}>{msg}</p>}
       </div>
     );
   }
 
   return (
-    <div className="forja-shell" style={{ padding: 18, gap: 12, display: "flex", flexDirection: "column" }}>
-      <Link href="/" style={{ color: "#9CFF3D" }}>← Inicio</Link>
-      <h1 style={{ fontSize: 20 }}>Panel del entrenador ({clients.length})</h1>
-      <div className="forja-card" style={{ display: "flex", gap: 8 }}>
-        <input className="forja-input" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre del cliente" />
-        <button className="forja-btn forja-btn-primary" style={{ width: "auto" }} onClick={createClient}>+ Crear</button>
+    <div className="forja-shell gap-4 p-5">
+      <Button render={<Link href="/" />} variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }}>
+        <ChevronLeft size={18} />
+        Inicio
+      </Button>
+      <h1 className="text-2xl font-bold">Clientes ({clients.length})</h1>
+      <Card>
+        <CardContent className="flex gap-2 pt-6">
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre del cliente" onKeyDown={(e) => e.key === "Enter" && createClient()} />
+          <Button onClick={createClient} className="shrink-0">
+            <Plus size={16} />
+            Crear
+          </Button>
+        </CardContent>
+      </Card>
+      <div className="flex flex-col gap-2">
+        {clients.map((c) => (
+          <Card key={c.id} className="cursor-pointer transition-colors hover:border-primary/60" onClick={() => openClient(c.id)}>
+            <CardContent className="flex items-center gap-3 py-3">
+              <Avatar>
+                <AvatarFallback>{initials(c.name)}</AvatarFallback>
+              </Avatar>
+              <b className="flex-1">{c.name}</b>
+              <Badge variant="secondary">código {c.code}</Badge>
+            </CardContent>
+          </Card>
+        ))}
+        {!clients.length && <p className="text-sm text-muted-foreground">Aún no hay clientes. Crea el primero arriba.</p>}
       </div>
-      {clients.map((c) => (
-        <button key={c.id} onClick={() => openClient(c.id)} style={{ textAlign: "left", background: "#101010", border: "1px solid #262626", borderRadius: 6, padding: 12 }}>
-          <b>{c.name}</b> <span style={{ fontSize: 12, color: "#9a9a9a" }}>código {c.code}</span>
-        </button>
-      ))}
     </div>
   );
 }
