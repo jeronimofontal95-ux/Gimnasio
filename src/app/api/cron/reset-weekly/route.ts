@@ -4,8 +4,8 @@ import { workoutLogs } from "@/db/schema";
 import { lt } from "drizzle-orm";
 
 /*
- * Weekly reset, run by Vercel Cron every Sunday at 00:00 UTC (see vercel.json).
- * Deletes daily workout check-sheets older than 7 days so each week starts
+ * Yearly reset, run by Vercel Cron every January 1st at 00:00 UTC (see vercel.json).
+ * Deletes the prior year's daily workout check-sheets so each year starts
  * fresh. Completed routines (history) and weight records are kept.
  */
 export async function GET(req: Request) {
@@ -17,14 +17,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 7);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const yearStart = `${new Date().getUTCFullYear()}-01-01`;
 
   const deleted = await db
     .delete(workoutLogs)
-    .where(lt(workoutLogs.logDate, cutoffStr))
+    .where(lt(workoutLogs.logDate, yearStart))
     .returning({ id: workoutLogs.id });
 
-  return NextResponse.json({ ok: true, deleted: deleted.length, cutoff: cutoffStr });
+  return NextResponse.json({ ok: true, deleted: deleted.length, yearStart });
 }
