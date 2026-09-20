@@ -4,7 +4,10 @@ import { routineDays, exercises } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 type InExercise = { id?: string; name: string; media?: string[]; sets: string[] };
-type InDay = { id?: string; name: string; warmup?: string; exercises: InExercise[] };
+type InDay = { id?: string; name: string; warmup?: string; weekday?: number | null; exercises: InExercise[] };
+
+const cleanWeekday = (w: unknown) =>
+  typeof w === "number" && Number.isInteger(w) && w >= 0 && w <= 6 ? w : null;
 
 // Full-replace routine for a client (simple + matches original HTML editor).
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -22,7 +25,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     const d = days[i];
     const inserted = await db
       .insert(routineDays)
-      .values({ clientId: id, position: i, name: d.name || "Nuevo día", warmup: d.warmup ?? "" })
+      .values({ clientId: id, position: i, name: d.name || "Nuevo día", warmup: d.warmup ?? "", weekday: cleanWeekday(d.weekday) })
       .returning();
     const dayId = inserted[0].id;
     for (let j = 0; j < (d.exercises ?? []).length; j++) {

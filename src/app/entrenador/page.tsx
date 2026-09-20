@@ -19,7 +19,7 @@ type Client = { id: string; name: string; code: string };
 type Bundle = {
   client: Client;
   profile: Record<string, string> | null;
-  days: { id: string; name: string; warmup: string; exercises: { id: string; name: string; media: string[]; sets: string[] }[] }[];
+  days: { id: string; name: string; warmup: string; weekday: number | null; exercises: { id: string; name: string; media: string[]; sets: string[] }[] }[];
   diet: Record<string, string> | null;
   weights: { date: string; kg: string }[];
   history: { date: string; dayName: string }[];
@@ -62,6 +62,8 @@ const initials = (name: string) =>
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+const WEEKDAY_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
 
 export default function EntrenadorPage() {
   const { data: session, isPending } = useSession();
@@ -149,10 +151,11 @@ export default function EntrenadorPage() {
   const loadTemplate = async () => {
     if (!confirm("Reemplaza la rutina actual con la plantilla de ejemplo (5 días). ¿Continuar?")) return;
     const t = plantillaRutina();
-    const mapped = t.days.map((d) => ({
+    const mapped = t.days.map((d, idx) => ({
       id: "",
       name: d.name,
       warmup: d.warmup,
+      weekday: idx < 5 ? idx : null,
       exercises: d.exercises.map((e) => ({ id: "", name: e.name, media: e.gif ? [e.gif] : [], sets: e.sets })),
     }));
     setDaysDraft(mapped as Bundle["days"]);
@@ -250,6 +253,22 @@ export default function EntrenadorPage() {
                 <CardContent className="flex flex-col gap-2 pt-4">
                   <Input value={d.name} onChange={(e) => { const c = [...daysDraft]; c[i] = { ...c[i], name: e.target.value }; setDaysDraft(c); }} />
                   <Input value={d.warmup ?? ""} placeholder="Calentamiento…" onChange={(e) => { const c = [...daysDraft]; c[i] = { ...c[i], warmup: e.target.value }; setDaysDraft(c); }} />
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Día de la semana</span>
+                    <div className="mt-1 flex gap-1">
+                      {WEEKDAY_SHORT.map((w, wd) => (
+                        <Button
+                          key={wd}
+                          size="sm"
+                          variant={d.weekday === wd ? "default" : "outline"}
+                          className="h-8 flex-1 px-0"
+                          onClick={() => { const c = [...daysDraft]; c[i] = { ...c[i], weekday: c[i].weekday === wd ? null : wd }; setDaysDraft(c); }}
+                        >
+                          {w}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                   {(d.exercises ?? []).map((ex, j) => (
                     <div key={j} className="flex flex-col gap-2">
                       <Separator className="my-1" />
@@ -274,7 +293,7 @@ export default function EntrenadorPage() {
                 </CardContent>
               </Card>
             ))}
-            <Button variant="outline" onClick={() => setDaysDraft([...daysDraft, { id: "", name: "Nuevo día", warmup: "", exercises: [] }])}>
+            <Button variant="outline" onClick={() => setDaysDraft([...daysDraft, { id: "", name: "Nuevo día", warmup: "", weekday: null, exercises: [] }])}>
               <Plus size={16} />
               Agregar día
             </Button>

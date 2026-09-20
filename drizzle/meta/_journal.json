@@ -15,6 +15,13 @@
       "when": 1789875499537,
       "tag": "0001_groovy_mystique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789878597809,
+      "tag": "0002_needy_exiles",
+      "breakpoints": true
     }
   ]
 }

@@ -16,7 +16,7 @@ type Client = { id: string; name: string; code: string };
 type Bundle = {
   client: Client;
   profile: Record<string, string> | null;
-  days: { id: string; name: string; warmup: string; exercises: { id: string; name: string; media: string[]; sets: string[] }[] }[];
+  days: { id: string; name: string; warmup: string; weekday: number | null; exercises: { id: string; name: string; media: string[]; sets: string[] }[] }[];
   diet: Record<string, string> | null;
   weights: { date: string; kg: string }[];
   history: { date: string; dayName: string }[];
@@ -53,6 +53,7 @@ const addDaysISO = (iso: string, n: number) => {
   return isoLocal(d);
 };
 const mondayOf = (iso: string) => addDaysISO(iso, -((parseISO(iso).getDay() + 6) % 7));
+const dowOf = (iso: string) => (parseISO(iso).getDay() + 6) % 7; // 0 = Monday … 6 = Sunday
 const fmtShort = (iso: string) =>
   parseISO(iso).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" });
 
@@ -108,8 +109,10 @@ export default function ClientePage() {
 
   useEffect(() => {
     if (bundle && bundle.days.length) {
-      setDayIdx(0);
-      loadLog(bundle.client.id, bundle.days[0].id, selDate);
+      const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
+      const i = idx >= 0 ? idx : 0;
+      setDayIdx(i);
+      loadLog(bundle.client.id, bundle.days[i].id, selDate);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundle?.client.id]);
@@ -137,9 +140,11 @@ export default function ClientePage() {
 
   const gotoDate = (date: string) => {
     setSelDate(date);
-    if (!bundle) return;
-    const d = bundle.days[dayIdx];
-    if (d) loadLog(bundle.client.id, d.id, date);
+    if (!bundle || !bundle.days.length) return;
+    const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(date));
+    const i = idx >= 0 ? idx : dayIdx;
+    setDayIdx(i);
+    loadLog(bundle.client.id, bundle.days[i].id, date);
   };
 
   if (!bundle) {
@@ -235,6 +240,7 @@ export default function ClientePage() {
               const isSel = d === selDate;
               const doneHere = histDates.has(d);
               const wd = (parseISO(d).getDay() + 6) % 7;
+              const schedHere = bundle.days.some((dd) => dd.weekday === wd);
               return (
                 <button
                   key={d}
@@ -253,6 +259,14 @@ export default function ClientePage() {
                     />
                   ) : (
                     <span className="mt-0.5 h-1.5" />
+                  )}
+                  {schedHere ? (
+                    <span
+                      className="mt-0.5 h-0.5 w-4 rounded-full"
+                      style={{ background: isSel ? "#0a0a0a" : "#9CFF3D", opacity: 0.55 }}
+                    />
+                  ) : (
+                    <span className="mt-0.5 h-0.5" />
                   )}
                 </button>
               );
@@ -276,6 +290,11 @@ export default function ClientePage() {
                 onClick={() => { setDayIdx(i); loadLog(bundle.client.id, d.id, selDate); }}
               >
                 {d.name}
+                {d.weekday != null && (
+                  <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold">
+                    {WEEKDAYS[d.weekday]}
+                  </span>
+                )}
               </Button>
             ))}
           </div>

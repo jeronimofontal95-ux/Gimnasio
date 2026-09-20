@@ -1,0 +1,1 @@
+ALTER TABLE "routine_days" ADD COLUMN "weekday" integer;

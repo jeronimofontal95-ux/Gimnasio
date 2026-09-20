@@ -115,6 +115,8 @@ export const routineDays = pgTable("routine_days", {
   position: integer("position").notNull().default(0),
   name: text("name").notNull().default("Nuevo día"),
   warmup: text("warmup").default(""),
+  // scheduled weekday: 0 = Monday … 6 = Sunday, null = unscheduled
+  weekday: integer("weekday"),
 });
 
 export const exercises = pgTable("exercises", {
