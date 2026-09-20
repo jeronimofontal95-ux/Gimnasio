@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0d0d0d;
+  --foreground: #f2f2f2;
+  --forja: #9cff3d;
+  --forja-soft: #c6ff7a;
+  --surface: #171717;
+  --steel: #333333;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}
+
+.forja-shell {
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+.forja-input {
+  width: 100%;
+  border: 1.5px solid var(--steel);
+  border-radius: 6px;
+  padding: 11px 12px;
+  font-size: 15px;
+  color: var(--foreground);
+  background: #101010;
+  outline: none;
+}
+.forja-input:focus {
+  border-color: var(--forja);
+}
+
+.forja-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 13px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.forja-btn-primary {
+  background: var(--forja);
+  color: #0a0a0a;
+}
+.forja-btn-navy {
+  background: #0a0a0a;
+  color: #fff;
+  border: 1px solid var(--steel);
+}
+.forja-btn-outline {
+  background: transparent;
+  color: var(--forja);
+  border: 1.5px solid var(--forja);
+}
+.forja-card {
+  background: #101010;
+  border: 1px solid #262626;
+  border-left: 4px solid var(--forja);
+  border-radius: 6px;
+  padding: 16px;
+}
+.forja-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a9a9a;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+  display: block;
+}
