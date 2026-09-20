@@ -326,6 +326,30 @@ export default function ClientePage() {
                   </CardContent>
                 </Card>
               ))}
+              {(() => {
+                const recorded = bundle.history.some((h) => h.date === selDate && h.dayName === day.name);
+                const finished = recorded || (total > 0 && done === total);
+                return (
+                  <>
+                    {!finished && total > 0 && (
+                      <p className="text-center text-xs text-muted-foreground">
+                        Marca cada serie con ✓ o termina todo de una vez abajo.
+                      </p>
+                    )}
+                    <Button
+                      size="lg"
+                      disabled={finished || !total}
+                      onClick={async () => {
+                        const n = (log ?? []).map((x) => ({ ...x, sets: x.sets.map((s) => ({ ...s, done: true })) }));
+                        await saveLog(n);
+                        recordCompletion(day.name);
+                      }}
+                    >
+                      {finished ? "✓ Rutina completada" : "Completar rutina del día"}
+                    </Button>
+                  </>
+                );
+              })()}
             </>
           )}
         </>
