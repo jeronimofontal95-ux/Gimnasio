@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { LogExercise } from "@/db/schema";
 
 type Client = { id: string; name: string; code: string };
@@ -38,6 +38,24 @@ const initials = (name: string) =>
     .join("")
     .toUpperCase();
 
+const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
+const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+const isoLocal = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parseISO = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+const addDaysISO = (iso: string, n: number) => {
+  const d = parseISO(iso);
+  d.setDate(d.getDate() + n);
+  return isoLocal(d);
+};
+const mondayOf = (iso: string) => addDaysISO(iso, -((parseISO(iso).getDay() + 6) % 7));
+const fmtShort = (iso: string) =>
+  parseISO(iso).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" });
+
 export default function ClientePage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [picked, setPicked] = useState<Client | null>(null);
@@ -47,6 +65,11 @@ export default function ClientePage() {
   const [tab, setTab] = useState<"rutina" | "dieta" | "datos" | "progreso">("rutina");
   const [dayIdx, setDayIdx] = useState(0);
   const [log, setLog] = useState<LogExercise[] | null>(null);
+  const [selDate, setSelDate] = useState(() => isoLocal(new Date()));
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = new Date();
+    return { y: d.getFullYear(), m: d.getMonth() };
+  });
 
   useEffect(() => {
     fetch("/api/clients")
@@ -67,8 +90,8 @@ export default function ClientePage() {
     setErr("");
   };
 
-  const loadLog = async (clientId: string, dayId: string) => {
-    const r = await fetch(`/api/clients/${clientId}/logs/${dayId}`);
+  const loadLog = async (clientId: string, dayId: string, date: string) => {
+    const r = await fetch(`/api/clients/${clientId}/logs/${dayId}?date=${date}`);
     const j = await r.json();
     setLog(j.payload as LogExercise[]);
   };
@@ -76,7 +99,7 @@ export default function ClientePage() {
   useEffect(() => {
     if (bundle && bundle.days.length) {
       setDayIdx(0);
-      loadLog(bundle.client.id, bundle.days[0].id);
+      loadLog(bundle.client.id, bundle.days[0].id, selDate);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundle?.client.id]);
@@ -84,11 +107,29 @@ export default function ClientePage() {
   const saveLog = async (next: LogExercise[]) => {
     if (!bundle || !bundle.days[dayIdx]) return;
     setLog(next);
-    await fetch(`/api/clients/${bundle.client.id}/logs/${bundle.days[dayIdx].id}`, {
+    await fetch(`/api/clients/${bundle.client.id}/logs/${bundle.days[dayIdx].id}?date=${selDate}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ payload: next }),
     });
+  };
+
+  const recordCompletion = async (dayName: string) => {
+    if (!bundle) return;
+    if (bundle.history.some((h) => h.date === selDate && h.dayName === dayName)) return;
+    await fetch(`/api/clients/${bundle.client.id}/progress`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "history", dayName, date: selDate }),
+    });
+    setBundle({ ...bundle, history: [{ date: selDate, dayName }, ...bundle.history] });
+  };
+
+  const gotoDate = (date: string) => {
+    setSelDate(date);
+    if (!bundle) return;
+    const d = bundle.days[dayIdx];
+    if (d) loadLog(bundle.client.id, d.id, date);
   };
 
   if (!bundle) {
@@ -155,6 +196,9 @@ export default function ClientePage() {
   const total = (log ?? []).reduce((a, e) => a + e.sets.length, 0);
   const done = (log ?? []).reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0);
   const pct = total ? Math.round((done / total) * 100) : 0;
+  const todayStr = isoLocal(new Date());
+  const weekStart = mondayOf(selDate);
+  const histDates = new Set(bundle.history.map((h) => h.date));
 
   return (
     <div className="forja-shell gap-3 p-5 pb-24">
@@ -173,6 +217,62 @@ export default function ClientePage() {
 
       {tab === "rutina" && (
         <>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Semana anterior"
+              onClick={() => gotoDate(addDaysISO(weekStart, -7))}
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            <div className="grid flex-1 grid-cols-7 gap-1">
+              {[0, 1, 2, 3, 4, 5, 6].map((o) => {
+                const d = addDaysISO(weekStart, o);
+                const isSel = d === selDate;
+                const isFuture = d > todayStr;
+                const doneHere = histDates.has(d);
+                return (
+                  <button
+                    key={d}
+                    disabled={isFuture}
+                    onClick={() => gotoDate(d)}
+                    className={`flex flex-col items-center rounded-lg border py-1.5 ${
+                      isSel ? "border-primary bg-primary text-primary-foreground" : "border-border"
+                    } ${isFuture ? "opacity-30" : ""}`}
+                  >
+                    <span className="text-[10px] leading-none">{WEEKDAYS[o]}</span>
+                    <span className="text-sm font-bold leading-tight">{Number(d.slice(8))}</span>
+                    {doneHere ? (
+                      <span
+                        className="mt-0.5 h-1.5 w-1.5 rounded-full"
+                        style={{ background: isSel ? "#0a0a0a" : "#9CFF3D" }}
+                      />
+                    ) : (
+                      <span className="mt-0.5 h-1.5" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Semana siguiente"
+              disabled={weekStart >= mondayOf(todayStr)}
+              onClick={() => gotoDate(addDaysISO(weekStart, 7))}
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+          <div className="flex items-center justify-between">
+            <b className="text-sm capitalize">{selDate === todayStr ? "Hoy" : fmtShort(selDate)}</b>
+            {selDate !== todayStr && (
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => gotoDate(todayStr)}>
+                Volver a hoy
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {days.map((d, i) => (
               <Button
@@ -180,7 +280,7 @@ export default function ClientePage() {
                 size="sm"
                 variant={i === dayIdx ? "default" : "outline"}
                 className="shrink-0 rounded-full"
-                onClick={() => { setDayIdx(i); loadLog(bundle.client.id, d.id); }}
+                onClick={() => { setDayIdx(i); loadLog(bundle.client.id, d.id, selDate); }}
               >
                 {d.name}
               </Button>
@@ -208,7 +308,7 @@ export default function ClientePage() {
                         <span className="text-xs text-muted-foreground">{s.target}</span>
                         <Input className="h-8 px-1 text-center" type="number" value={s.weight} placeholder="Kg" onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].weight = e.target.value; saveLog(n); }} />
                         <Input className="h-8 px-1 text-center" type="number" value={s.reps} placeholder="Reps" onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].reps = e.target.value; saveLog(n); }} />
-                        <button onClick={() => { const n = structuredClone(log ?? []); n[ei].sets[si].done = !n[ei].sets[si].done; saveLog(n); if (n.every((x) => x.sets.every((y) => y.done))) { fetch(`/api/clients/${bundle.client.id}/progress`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "history", dayName: day.name }) }); } }} className="h-[26px] w-[26px] rounded-full border-[1.5px] border-border" style={s.done ? { background: "#9CFF3D", borderColor: "#9CFF3D", color: "#0a0a0a" } : undefined}>✓</button>
+                        <button onClick={() => { const n = structuredClone(log ?? []); n[ei].sets[si].done = !n[ei].sets[si].done; saveLog(n); if (n.every((x) => x.sets.every((y) => y.done))) { recordCompletion(day.name); } }} className="h-[26px] w-[26px] rounded-full border-[1.5px] border-border" style={s.done ? { background: "#9CFF3D", borderColor: "#9CFF3D", color: "#0a0a0a" } : undefined}>✓</button>
                       </div>
                     ))}
                   </CardContent>
@@ -247,15 +347,115 @@ export default function ClientePage() {
         </Card>
       )}
 
-      {tab === "progreso" && (
-        <Card>
-          <CardContent className="pt-6">
-            <b className="text-sm">Rutinas completadas ({bundle.history.length})</b>
-            {bundle.history.slice(0, 20).map((h, i) => <p key={i} className="text-sm">{h.dayName} — {h.date}</p>)}
-            {!bundle.history.length && <p className="mt-1 text-sm text-muted-foreground">Aún no has completado ninguna. ¡Vamos!</p>}
-          </CardContent>
-        </Card>
-      )}
+      {tab === "progreso" &&
+        (() => {
+          const total = bundle.history.length;
+          const inLast = (n: number) => bundle.history.filter((h) => h.date >= addDaysISO(todayStr, -(n - 1))).length;
+          let streak = 0;
+          let cursor = histDates.has(todayStr) ? todayStr : addDaysISO(todayStr, -1);
+          while (histDates.has(cursor)) {
+            streak++;
+            cursor = addDaysISO(cursor, -1);
+          }
+          const { y, m } = calMonth;
+          const now = new Date();
+          const atCurrentMonth = y === now.getFullYear() && m === now.getMonth();
+          const firstDow = (new Date(y, m, 1).getDay() + 6) % 7;
+          const dim = new Date(y, m + 1, 0).getDate();
+          const cells: (string | null)[] = [
+            ...Array<string | null>(firstDow).fill(null),
+            ...Array.from({ length: dim }, (_, i) => isoLocal(new Date(y, m, i + 1))),
+          ];
+          const stats: [string, string][] = [
+            ["Total", String(total)],
+            ["7 días", String(inLast(7))],
+            ["30 días", String(inLast(30))],
+            ["Racha", streak ? `${streak}d` : "—"],
+          ];
+          return (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-4 gap-2">
+                {stats.map(([label, value]) => (
+                  <Card key={label}>
+                    <CardContent className="p-3 text-center">
+                      <div className="text-xl font-extrabold">{value}</div>
+                      <div className="text-[11px] text-muted-foreground">{label}</div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Mes anterior"
+                      onClick={() => setCalMonth({ y: m === 0 ? y - 1 : y, m: m === 0 ? 11 : m - 1 })}
+                    >
+                      <ChevronLeft size={16} />
+                    </Button>
+                    <b className="text-sm capitalize">
+                      {MONTHS[m]} {y}
+                    </b>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Mes siguiente"
+                      disabled={atCurrentMonth}
+                      onClick={() => setCalMonth({ y: m === 11 ? y + 1 : y, m: m === 11 ? 0 : m + 1 })}
+                    >
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {WEEKDAYS.map((w, i) => (
+                      <span key={i} className="py-1 text-[10px] font-bold text-muted-foreground">
+                        {w}
+                      </span>
+                    ))}
+                    {cells.map((c, i) =>
+                      c === null ? (
+                        <span key={`e${i}`} />
+                      ) : (
+                        <button
+                          key={c}
+                          disabled={c > todayStr || !histDates.has(c)}
+                          onClick={() => {
+                            setTab("rutina");
+                            gotoDate(c);
+                          }}
+                          className={`flex flex-col items-center rounded-lg border py-1.5 ${
+                            histDates.has(c) ? "border-primary/60" : "border-transparent opacity-40"
+                          }`}
+                        >
+                          <span className="text-sm leading-tight">{Number(c.slice(8))}</span>
+                          {histDates.has(c) ? (
+                            <span className="mt-0.5 h-1.5 w-1.5 rounded-full" style={{ background: "#9CFF3D" }} />
+                          ) : (
+                            <span className="mt-0.5 h-1.5" />
+                          )}
+                        </button>
+                      )
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">Toca un día marcado para ver ese entrenamiento.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <b className="text-sm">Rutinas completadas ({total})</b>
+                  {bundle.history.slice(0, 10).map((h, i) => (
+                    <p key={i} className="text-sm">
+                      {h.dayName} — {h.date}
+                    </p>
+                  ))}
+                  {!total && <p className="mt-1 text-sm text-muted-foreground">Aún no has completado ninguna. ¡Vamos!</p>}
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })()}
 
       <div className="fixed bottom-0 left-1/2 flex w-full -translate-x-1/2 border-t border-border bg-background/95 p-2 backdrop-blur" style={{ maxWidth: "var(--shell-max)" }}>
         {(["rutina", "dieta", "datos", "progreso"] as const).map((t) => (

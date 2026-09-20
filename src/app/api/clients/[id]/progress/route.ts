@@ -11,7 +11,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (body.kind === "history") {
     const dayName = String(body.dayName ?? "").trim();
     if (!dayName) return NextResponse.json({ error: "dayName requerido" }, { status: 400 });
-    await db.insert(history).values({ clientId: id, date: todayISO(), dayName });
+    const q = String(body.date ?? "");
+    const today = todayISO();
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(q) && q <= today ? q : today;
+    await db.insert(history).values({ clientId: id, date, dayName });
     return NextResponse.json({ ok: true });
   }
 

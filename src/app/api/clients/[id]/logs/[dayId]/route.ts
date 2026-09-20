@@ -5,9 +5,17 @@ import { eq, and } from "drizzle-orm";
 import { todayISO, type TemplateExercise } from "@/lib/forja";
 import type { LogExercise } from "@/db/schema";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string; dayId: string }> }) {
+// YYYY-MM-DD from ?date=, validated and clamped to today
+const reqDate = (req: Request) => {
+  const q = new URL(req.url).searchParams.get("date") ?? "";
+  const today = todayISO();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(q)) return today;
+  return q > today ? today : q;
+};
+
+export async function GET(req: Request, ctx: { params: Promise<{ id: string; dayId: string }> }) {
   const { id, dayId } = await ctx.params;
-  const date = todayISO();
+  const date = reqDate(req);
 
   const existing = await db
     .select()
@@ -49,7 +57,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string; day
   const payload = body.payload as LogExercise[];
   if (!Array.isArray(payload)) return NextResponse.json({ error: "payload inválido" }, { status: 400 });
 
-  const date = todayISO();
+  const date = reqDate(req);
   const existing = await db
     .select()
     .from(workoutLogs)
