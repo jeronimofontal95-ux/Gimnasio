@@ -118,6 +118,7 @@ export default function ClientePage() {
   }, [bundle?.client.id]);
 
   const saveLog = async (next: LogExercise[]) => {
+    if (isFutureDate) return;
     if (!bundle || !bundle.days[dayIdx]) return;
     setLog(next);
     await fetch(`/api/clients/${bundle.client.id}/logs/${bundle.days[dayIdx].id}?date=${selDate}`, {
@@ -144,6 +145,11 @@ export default function ClientePage() {
     const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(date));
     const i = idx >= 0 ? idx : dayIdx;
     setDayIdx(i);
+    if (date > todayStr) {
+      // future dates: read-only preview of the scheduled routine, nothing to load
+      setLog(null);
+      return;
+    }
     loadLog(bundle.client.id, bundle.days[i].id, date);
   };
 
@@ -206,15 +212,24 @@ export default function ClientePage() {
     );
   }
 
+  const todayStr = isoLocal(new Date());
   const days = bundle.days;
   const day = days[dayIdx];
-  const total = (log ?? []).reduce((a, e) => a + e.sets.length, 0);
-  const done = (log ?? []).reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0);
+  const isFutureDate = selDate > todayStr;
+  const preview: LogExercise[] | null =
+    isFutureDate && day
+      ? day.exercises.map((e) => ({
+          name: e.name,
+          sets: e.sets.map((t) => ({ target: t, reps: "", weight: "", done: false })),
+        }))
+      : null;
+  const viewLog = isFutureDate ? preview : log;
+  const total = (viewLog ?? []).reduce((a, e) => a + e.sets.length, 0);
+  const done = (viewLog ?? []).reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0);
   const pct = total ? Math.round((done / total) * 100) : 0;
-  const todayStr = isoLocal(new Date());
   const histDates = new Set(bundle.history.map((h) => h.date));
   const stripDays: string[] = [];
-  for (let d = mondayOf(addDaysISO(todayStr, -12 * 7)); d <= todayStr; d = addDaysISO(d, 1)) {
+  for (let d = mondayOf(addDaysISO(todayStr, -3 * 7)); d <= addDaysISO(todayStr, 7); d = addDaysISO(d, 1)) {
     stripDays.push(d);
   }
 
@@ -287,7 +302,7 @@ export default function ClientePage() {
                 size="sm"
                 variant={i === dayIdx ? "default" : "outline"}
                 className="shrink-0 rounded-full"
-                onClick={() => { setDayIdx(i); loadLog(bundle.client.id, d.id, selDate); }}
+                onClick={() => { setDayIdx(i); if (selDate <= todayStr) loadLog(bundle.client.id, d.id, selDate); }}
               >
                 {d.name}
                 {d.weekday != null && (
@@ -299,6 +314,9 @@ export default function ClientePage() {
             ))}
           </div>
           {!days.length && <p className="text-sm text-muted-foreground">Tu entrenador todavía no ha creado tu rutina.</p>}
+          {day && (viewLog ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">Este día aún no tiene ejercicios asignados. Pídele a tu entrenador que los agregue.</p>
+          )}
           {day && (
             <>
               <div className="flex items-center gap-3">
@@ -310,23 +328,49 @@ export default function ClientePage() {
                   <CardContent className="py-3 text-sm">🔸 {day.warmup}</CardContent>
                 </Card>
               )}
-              {(log ?? []).map((ex, ei) => (
+              {isFutureDate && (
+                <Card>
+                  <CardContent className="py-3 text-sm">
+                    📅 Programado para el <b className="capitalize">{fmtShort(selDate)}</b>
+                    {day.name ? <> · {day.name}</> : null}. Aquí la verás ese día.
+                  </CardContent>
+                </Card>
+              )}
+              {(viewLog ?? []).map((ex, ei) => (
                 <Card key={ei}>
                   <CardContent className="flex flex-col gap-1 pt-4">
                     <b className="text-sm">{ei + 1}. {ex.name}</b>
+                    {(day.exercises[ei]?.media ?? []).length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto py-1">
+                        {(day.exercises[ei]?.media ?? []).map((url, mi) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={mi}
+                            src={url}
+                            alt=""
+                            loading="lazy"
+                            className="h-20 w-20 shrink-0 rounded-md border border-border object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ))}
+                      </div>
+                    )}
                     {ex.sets.map((s, si) => (
                       <div key={si} className="grid grid-cols-[26px_1fr_64px_64px_30px] items-center gap-1.5 py-1 text-sm">
                         <span className="text-muted-foreground">{si + 1}</span>
                         <span className="text-xs text-muted-foreground">{s.target}</span>
-                        <Input className="h-8 px-1 text-center" type="number" value={s.weight} placeholder="Kg" onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].weight = e.target.value; saveLog(n); }} />
-                        <Input className="h-8 px-1 text-center" type="number" value={s.reps} placeholder="Reps" onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].reps = e.target.value; saveLog(n); }} />
-                        <button onClick={() => { const n = structuredClone(log ?? []); n[ei].sets[si].done = !n[ei].sets[si].done; saveLog(n); if (n.every((x) => x.sets.every((y) => y.done))) { recordCompletion(day.name); } }} className="h-[26px] w-[26px] rounded-full border-[1.5px] border-border" style={s.done ? { background: "#9CFF3D", borderColor: "#9CFF3D", color: "#0a0a0a" } : undefined}>✓</button>
+                        <Input className="h-8 px-1 text-center" type="number" value={s.weight} placeholder="Kg" disabled={isFutureDate} onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].weight = e.target.value; saveLog(n); }} />
+                        <Input className="h-8 px-1 text-center" type="number" value={s.reps} placeholder="Reps" disabled={isFutureDate} onChange={(e) => { const n = structuredClone(log ?? []); n[ei].sets[si].reps = e.target.value; saveLog(n); }} />
+                        {!isFutureDate && (
+                          <button onClick={() => { const n = structuredClone(log ?? []); n[ei].sets[si].done = !n[ei].sets[si].done; saveLog(n); if (n.every((x) => x.sets.every((y) => y.done))) { recordCompletion(day.name); } }} className="h-[26px] w-[26px] rounded-full border-[1.5px] border-border" style={s.done ? { background: "#9CFF3D", borderColor: "#9CFF3D", color: "#0a0a0a" } : undefined}>✓</button>
+                        )}
                       </div>
                     ))}
                   </CardContent>
                 </Card>
               ))}
               {(() => {
+                if (isFutureDate) return null;
                 const recorded = bundle.history.some((h) => h.date === selDate && h.dayName === day.name);
                 const finished = recorded || (total > 0 && done === total);
                 return (
