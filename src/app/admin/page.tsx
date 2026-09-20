@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dumbbell } from "lucide-react";
 import { signOut } from "@/lib/auth-client";
@@ -41,9 +40,7 @@ export default function AdminPage() {
   if (state === "loading") {
     return (
       <div className="forja-shell gap-3 p-5">
-        <Skeleton className="h-7 w-40" />
-        <Skeleton className="h-4 w-64" />
-        <Skeleton className="h-24 w-full" />
+        <p className="text-sm text-muted-foreground">Verificando permisos…</p>
       </div>
     );
   }

@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
@@ -75,19 +74,14 @@ export default function EntrenadorPage() {
   const [dietDraft, setDietDraft] = useState<Record<string, string>>({});
   const [daysDraft, setDaysDraft] = useState<Bundle["days"]>([]);
   const [msg, setMsg] = useState("");
-  const [loadingClients, setLoadingClients] = useState(false);
-  const [opening, setOpening] = useState(false);
 
   const loadClients = async () => {
-    setLoadingClients(true);
     try {
       const r = await fetch("/api/clients");
       const j = await r.json();
       setClients(Array.isArray(j) ? j : []);
     } catch {
       setClients([]);
-    } finally {
-      setLoadingClients(false);
     }
   };
 
@@ -96,19 +90,14 @@ export default function EntrenadorPage() {
   }, [session ]);
 
   const openClient = async (id: string) => {
-    setOpening(true);
-    try {
-      const r = await fetch(`/api/clients/${id}`);
-      const b: Bundle = await r.json();
-      setOpenId(id);
-      setBundle(b);
-      setTab("datos");
-      setDraft({ ...(b.profile ?? {}) });
-      setDietDraft({ ...(b.diet ?? {}) });
-      setDaysDraft(structuredClone(b.days));
-    } finally {
-      setOpening(false);
-    }
+    const r = await fetch(`/api/clients/${id}`);
+    const b: Bundle = await r.json();
+    setOpenId(id);
+    setBundle(b);
+    setTab("datos");
+    setDraft({ ...(b.profile ?? {}) });
+    setDietDraft({ ...(b.diet ?? {}) });
+    setDaysDraft(structuredClone(b.days));
   };
 
   const createClient = async () => {
@@ -194,23 +183,6 @@ export default function EntrenadorPage() {
             <Button render={<Link href="/login" />}>Ir a iniciar sesión</Button>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
-
-  if (opening) {
-    return (
-      <div className="forja-shell gap-4 p-5">
-        <Skeleton className="h-9 w-28" />
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-11 w-11 rounded-full" />
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-5 w-24" />
-          </div>
-        </div>
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -377,26 +349,18 @@ export default function EntrenadorPage() {
         </CardContent>
       </Card>
       <div className="flex flex-col gap-2">
-        {loadingClients ? (
-          <>
-            <Skeleton className="h-[68px] w-full" />
-            <Skeleton className="h-[68px] w-full" />
-            <Skeleton className="h-[68px] w-full" />
-          </>
-        ) : (
-          clients.map((c) => (
-            <Card key={c.id} className="cursor-pointer transition-colors hover:border-primary/60" onClick={() => openClient(c.id)}>
-              <CardContent className="flex items-center gap-3 py-3">
-                <Avatar>
-                  <AvatarFallback>{initials(c.name)}</AvatarFallback>
-                </Avatar>
-                <b className="flex-1">{c.name}</b>
-                <Badge variant="secondary">código {c.code}</Badge>
-              </CardContent>
-            </Card>
-          ))
-        )}
-        {!loadingClients && !clients.length && <p className="text-sm text-muted-foreground">Aún no hay clientes. Crea el primero arriba.</p>}
+        {clients.map((c) => (
+          <Card key={c.id} className="cursor-pointer transition-colors hover:border-primary/60" onClick={() => openClient(c.id)}>
+            <CardContent className="flex items-center gap-3 py-3">
+              <Avatar>
+                <AvatarFallback>{initials(c.name)}</AvatarFallback>
+              </Avatar>
+              <b className="flex-1">{c.name}</b>
+              <Badge variant="secondary">código {c.code}</Badge>
+            </CardContent>
+          </Card>
+        ))}
+        {!clients.length && <p className="text-sm text-muted-foreground">Aún no hay clientes. Crea el primero arriba.</p>}
       </div>
     </div>
   );

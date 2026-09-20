@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft } from "lucide-react";
 import { signIn, signUp, signOut, useSession } from "@/lib/auth-client";
 
 export default function LoginPage() {
-  const { data: session, isPending } = useSession();
+  const { data: session } = useSession();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,19 +42,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {isPending ? (
-        <Card>
-          <CardContent className="flex flex-col gap-4 pt-6">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <div className="flex gap-2">
-              <Skeleton className="h-10 w-24" />
-              <Skeleton className="h-10 w-32" />
-            </div>
-          </CardContent>
-        </Card>
-      ) : session ? (
+      {session ? (
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6">
             <p className="text-sm">
