@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, Loader2, Plus, Trash2 } from "lucide-react";
 import { plantillaRutina } from "@/lib/forja";
 import { useSession } from "@/lib/auth-client";
+import type { LogExercise } from "@/db/schema";
 
 type Client = { id: string; name: string; code: string };
 type Bundle = {
@@ -23,6 +24,14 @@ type Bundle = {
   diet: Record<string, string> | null;
   weights: { date: string; kg: string }[];
   history: { date: string; dayName: string }[];
+};
+
+type SessionLog = {
+  id: string;
+  logDate: string;
+  dayId: string | null;
+  dayName: string | null;
+  payload: LogExercise[];
 };
 
 const PROFILE_FIELDS: [string, string][] = [
@@ -86,6 +95,7 @@ export default function EntrenadorPage() {
   const [dietDraft, setDietDraft] = useState<Record<string, string>>({});
   const [daysDraft, setDaysDraft] = useState<Bundle["days"]>([]);
   const [activeDay, setActiveDay] = useState(0);
+  const [logs, setLogs] = useState<SessionLog[]>([]);
   const [msg, setMsg] = useState("");
   const [savingRoutine, setSavingRoutine] = useState(false);
 
@@ -114,6 +124,13 @@ export default function EntrenadorPage() {
     setDaysDraft(normalizeWeekDays(b.days));
     const firstWithEx = normalizeWeekDays(b.days).findIndex((d) => (d.exercises ?? []).length > 0);
     setActiveDay(firstWithEx >= 0 ? firstWithEx : 0);
+    try {
+      const rl = await fetch(`/api/clients/${id}/logs`);
+      const jl = await rl.json();
+      setLogs(Array.isArray(jl) ? jl : []);
+    } catch {
+      setLogs([]);
+    }
   };
 
   const createClient = async () => {
@@ -231,9 +248,14 @@ export default function EntrenadorPage() {
   }
 
   if (openId && bundle) {
+    // Only sessions where the client actually logged weight/reps/done.
+    // (Opening a routine creates an empty log row; those are noise here.)
+    const sessions = logs.filter((l) =>
+      (l.payload ?? []).some((ex) => (ex.sets ?? []).some((s) => s.weight || s.reps || s.done))
+    );
     return (
       <div className="forja-shell gap-4 p-5">
-        <Button variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }} onClick={() => { setOpenId(null); setBundle(null); loadClients(); }}>
+        <Button variant="ghost" className="w-fit px-0" style={{ color: "#9CFF3D" }} onClick={() => { setOpenId(null); setBundle(null); setLogs([]); loadClients(); }}>
           <ChevronLeft size={18} />
           Clientes
         </Button>
@@ -379,6 +401,47 @@ export default function EntrenadorPage() {
           <TabsContent value="progreso" className="flex flex-col gap-3">
             <Card>
               <CardHeader>
+                <CardTitle className="text-base">Entrenamientos: qué hizo y con cuánto ({sessions.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                {sessions.map((l) => (
+                  <div key={l.id} className="flex flex-col gap-1">
+                    <p className="text-sm">
+                      <b>{l.dayName ?? "Rutina"}</b> — {l.logDate}
+                    </p>
+                    {(l.payload ?? []).map((ex, ei) => {
+                      const sets = (ex.sets ?? []).filter((s) => s.weight || s.reps || s.done);
+                      return (
+                        <div key={ei}>
+                          <p className="text-sm font-semibold">
+                            {ei + 1}. {ex.name}
+                          </p>
+                          {sets.length ? (
+                            sets.map((s, si) => (
+                              <p key={si} className="text-xs text-muted-foreground">
+                                Serie {si + 1}: {s.weight ? `${s.weight} Kg` : "—"} × {s.reps ? `${s.reps} reps` : "—"}
+                                {s.done ? " ✓" : ""}
+                              </p>
+                            ))
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Sin registro de peso/reps.</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {!(l.payload ?? []).length && (
+                      <p className="text-sm text-muted-foreground">Sesión sin ejercicios.</p>
+                    )}
+                    <Separator />
+                  </div>
+                ))}
+                {!sessions.length && (
+                  <p className="text-sm text-muted-foreground">El cliente aún no registra entrenamientos.</p>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-base">Pesos ({bundle.weights.length})</CardTitle>
               </CardHeader>
               <CardContent>
@@ -400,7 +463,7 @@ export default function EntrenadorPage() {
                 <CardTitle className="text-base">Ajustes</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <Button variant="destructive" onClick={async () => { if (confirm("¿Eliminar cliente?")) { await fetch(`/api/clients/${openId}`, { method: "DELETE" }); setOpenId(null); setBundle(null); loadClients(); } }}>
+                <Button variant="destructive" onClick={async () => { if (confirm("¿Eliminar cliente?")) { await fetch(`/api/clients/${openId}`, { method: "DELETE" }); setOpenId(null); setBundle(null); setLogs([]); loadClients(); } }}>
                   <Trash2 size={16} />
                   Eliminar cliente
                 </Button>
