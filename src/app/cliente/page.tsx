@@ -365,6 +365,9 @@ export default function ClientePage() {
               )}
               {(viewLog ?? []).map((ex, ei) => {
                 const allDone = ex.sets.length > 0 && ex.sets.every((s) => s.done);
+                // Media paired by exercise name (not position) so trainer
+                // reorders/renames never mix up names with GIFs.
+                const routineEx = day.exercises.find((r) => r.name === ex.name);
                 const patchSet = (si: number, patch: Partial<{ target: string; reps: string; weight: string; done: boolean }>) => {
                   const n = structuredClone(log ?? []);
                   Object.assign(n[ei].sets[si], patch);
@@ -392,9 +395,9 @@ export default function ClientePage() {
                         ✓
                       </span>
                     </div>
-                    {(day.exercises[ei]?.media ?? []).length > 0 && (
+                    {(routineEx?.media ?? []).length > 0 && (
                       <div className="flex gap-2 overflow-x-auto py-1">
-                        {(day.exercises[ei]?.media ?? []).map((url, mi) => (
+                        {(routineEx?.media ?? []).map((url, mi) => (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             key={mi}

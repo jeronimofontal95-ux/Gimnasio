@@ -13,6 +13,11 @@ const reqDate = (req: Request) => {
   return q > today ? today : q;
 };
 
+// Full-content signature: any trainer edit (names, series text, order, count)
+// rebuilds rows with fresh names/targets, keeping logged weight/reps/done.
+const contentSig = (list: { name: string; sets: string[] }[]) =>
+  list.map((e) => `${e.name}~${e.sets.join("~")}`).join("|");
+
 export async function GET(req: Request, ctx: { params: Promise<{ id: string; dayId: string }> }) {
   const { id, dayId } = await ctx.params;
   const date = reqDate(req);
@@ -24,9 +29,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; day
 
   const dayRows = await db.select().from(routineDays).where(eq(routineDays.id, dayId));
   const exRows = await db.select().from(exercises).where(eq(exercises.dayId, dayId));
-  // Signature includes series count so adding/removing series rebuilds rows
-  // (merging keeps weight/reps already logged for unchanged series).
-  const sig = exRows.map((e) => `${e.name}:${(e.sets as string[]).length}`).join("|");
+  const sig = contentSig(exRows.map((e) => ({ name: e.name, sets: e.sets as string[] })));
 
   if (existing.length && existing[0].signature === sig) {
     return NextResponse.json(existing[0]);
@@ -38,11 +41,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; day
     const targets = e.sets as string[];
     return {
       name: e.name,
-      sets: targets.map((target, i) =>
-        prev?.sets[i] && prev.sets[i].target === target
-          ? prev.sets[i]
-          : { target, reps: "", weight: "", done: false }
-      ),
+      sets: targets.map((target, i) => ({
+        target,
+        reps: prev?.sets[i]?.reps ?? "",
+        weight: prev?.sets[i]?.weight ?? "",
+        done: prev?.sets[i]?.done ?? false,
+      })),
     };
   });
 
@@ -77,7 +81,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string; day
   if (!existing.length) {
     const inserted = await db
       .insert(workoutLogs)
-      .values({ clientId: id, dayId, logDate: date, signature: payload.map((e) => `${e.name}:${e.sets.length}`).join("|"), payload })
+      .values({ clientId: id, dayId, logDate: date, signature: contentSig(payload.map((e) => ({ name: e.name, sets: e.sets.map((s) => s.target) }))), payload })
       .returning();
     return NextResponse.json(inserted[0]);
   }
