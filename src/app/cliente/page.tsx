@@ -89,6 +89,8 @@ export default function ClientePage() {
   const [tab, setTab] = useState<"rutina" | "dieta" | "datos" | "progreso">("rutina");
   const [dayIdx, setDayIdx] = useState(0);
   const [log, setLog] = useState<LogExercise[] | null>(null);
+  // Routines (day ids) with logged data on the selected date → ✓ badge on pills.
+  const [dayStatus, setDayStatus] = useState<Record<string, boolean>>({});
   const [selDate, setSelDate] = useState(() => isoLocal(new Date()));
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date();
@@ -130,12 +132,43 @@ export default function ClientePage() {
     setLog(j.payload as LogExercise[]);
   };
 
+  // Pick which routine to show for a date: keep the current one if it has
+  // data, otherwise jump to the first routine with logged data (so a past
+  // day "appears done" instead of showing an empty routine).
+  const refreshForDate = async (
+    clientId: string,
+    days: Bundle["days"],
+    date: string,
+    currentIdx: number
+  ) => {
+    let status: Record<string, boolean> = {};
+    try {
+      const r = await fetch(`/api/clients/${clientId}/log-status?date=${date}`);
+      const j = await r.json();
+      if (j && typeof j.status === "object") status = j.status;
+    } catch {
+      status = {};
+    }
+    setDayStatus(status);
+    let i = currentIdx;
+    if (!days[i] || !status[days[i].id]) {
+      const withData = days.findIndex((d) => status[d.id]);
+      if (withData >= 0) {
+        i = withData;
+      } else if (!days[i]) {
+        const fallback = days.findIndex((d) => d.weekday != null && d.weekday === dowOf(date));
+        i = fallback >= 0 ? fallback : 0;
+      }
+    }
+    setDayIdx(i);
+    if (days[i]) loadLog(clientId, days[i].id, date);
+    else setLog(null);
+  };
+
   useEffect(() => {
     if (bundle && bundle.days.length) {
       const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
-      const i = idx >= 0 ? idx : 0;
-      setDayIdx(i);
-      loadLog(bundle.client.id, bundle.days[i].id, selDate);
+      refreshForDate(bundle.client.id, bundle.days, selDate, idx >= 0 ? idx : 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundle?.client.id]);
@@ -144,6 +177,9 @@ export default function ClientePage() {
     if (isFutureDate) return;
     if (!bundle || !bundle.days[dayIdx]) return;
     setLog(next);
+    const hasData = next.some((ex) => ex.sets.some((s) => s.weight || s.reps || s.done));
+    const dayId = bundle.days[dayIdx].id;
+    setDayStatus((prev) => ({ ...prev, [dayId]: hasData }));
     await fetch(`/api/clients/${bundle.client.id}/logs/${bundle.days[dayIdx].id}?date=${selDate}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -167,12 +203,11 @@ export default function ClientePage() {
     if (!bundle || !bundle.days.length) return;
     if (date > todayStr) {
       // future dates: read-only preview of the selected routine, nothing to load
+      setDayStatus({});
       setLog(null);
       return;
     }
-    const d = bundle.days[dayIdx];
-    if (d) loadLog(bundle.client.id, d.id, date);
-    else setLog(null);
+    refreshForDate(bundle.client.id, bundle.days, date, dayIdx);
   };
 
   if (!bundle) {
@@ -327,6 +362,11 @@ export default function ClientePage() {
                 onClick={() => { setDayIdx(i); if (selDate > todayStr) setLog(null); else loadLog(bundle.client.id, d.id, selDate); }}
               >
                 {d.name}
+                {dayStatus[d.id] && (
+                  <span className="ml-1.5 font-bold" style={{ color: "#9CFF3D" }}>
+                    ✓
+                  </span>
+                )}
                 {d.weekday != null && (
                   <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold">
                     {WEEKDAYS[d.weekday]}
