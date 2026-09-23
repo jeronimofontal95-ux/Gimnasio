@@ -20,6 +20,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
   const status: Record<string, boolean> = {};
   for (const r of rows) {
+    if (!r.dayId) continue;
     const p = (r.payload as LogExercise[]) ?? [];
     status[r.dayId] = p.some((ex) => (ex.sets ?? []).some((s) => s.weight || s.reps || s.done));
   }
