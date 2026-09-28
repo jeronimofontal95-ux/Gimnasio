@@ -16,7 +16,7 @@ type Client = { id: string; name: string; code: string };
 type Bundle = {
   client: Client;
   profile: Record<string, string> | null;
-  days: { id: string; name: string; warmup: string; weekday: number | null; exercises: { id: string; name: string; media: string[]; sets: string[] }[] }[];
+  days: { id: string; name: string; warmup: string; weekday: number | null; exercises: { id: string; name: string; media: string[]; sets: string[]; notes: string }[] }[];
   diet: Record<string, string> | null;
   weights: { date: string; kg: string }[];
   history: { date: string; dayName: string }[];
@@ -435,6 +435,9 @@ export default function ClientePage() {
                         ✓
                       </span>
                     </div>
+                    {(routineEx?.notes ?? "").trim() && (
+                      <p className="rounded-md bg-muted px-3 py-2 text-xs">📝 {routineEx!.notes}</p>
+                    )}
                     {(routineEx?.media ?? []).length > 0 && (
                       <div className="flex gap-2 overflow-x-auto py-1">
                         {(routineEx?.media ?? []).map((url, mi) => (

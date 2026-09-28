@@ -22,6 +22,13 @@
       "when": 1789878597809,
       "tag": "0002_needy_exiles",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790559753283,
+      "tag": "0003_overjoyed_bug",
+      "breakpoints": true
     }
   ]
 }

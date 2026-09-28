@@ -130,6 +130,8 @@ export const exercises = pgTable("exercises", {
   media: jsonb("media").$type<string[]>().notNull().default([]),
   // one string per set, e.g. "Efectiva 10-12 reps"
   sets: jsonb("sets").$type<string[]>().notNull().default([]),
+  // trainer observation per exercise (e.g. adjustments for next week)
+  notes: text("notes").notNull().default(""),
 });
 
 export const diets = pgTable("diets", {

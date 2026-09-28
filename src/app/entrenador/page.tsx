@@ -20,7 +20,7 @@ type Client = { id: string; name: string; code: string };
 type Bundle = {
   client: Client;
   profile: Record<string, string> | null;
-  days: { id: string; name: string; warmup: string; weekday: number | null; exercises: { id: string; name: string; media: string[]; sets: string[] }[] }[];
+  days: { id: string; name: string; warmup: string; weekday: number | null; exercises: { id: string; name: string; media: string[]; sets: string[]; notes: string }[] }[];
   diet: Record<string, string> | null;
   weights: { date: string; kg: string }[];
   history: { date: string; dayName: string }[];
@@ -179,6 +179,7 @@ export default function EntrenadorPage() {
             ...ex,
             media: (ex.media ?? []).filter((u) => u.trim()).slice(0, 3),
             sets: (ex.sets ?? []).map((s) => s.trim()).filter(Boolean),
+            notes: (ex.notes ?? "").trim(),
           }))
           .filter((ex) => ex.name.trim() && ex.sets.length > 0),
       }));
@@ -207,7 +208,7 @@ export default function EntrenadorPage() {
         name: tpl.name,
         warmup: tpl.warmup,
         weekday: wd,
-        exercises: tpl.exercises.map((e) => ({ id: "", name: e.name, media: e.gif ? [e.gif] : [], sets: e.sets })),
+        exercises: tpl.exercises.map((e) => ({ id: "", name: e.name, media: e.gif ? [e.gif] : [], sets: e.sets, notes: "" })),
       };
     });
     setDaysDraft(mapped as Bundle["days"]);
@@ -349,6 +350,7 @@ export default function EntrenadorPage() {
                       <Input value={ex.name} placeholder="Ejercicio" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].name = e.target.value; setDaysDraft(c); }} />
                       <Input value={(ex.media ?? []).join(" ")} placeholder="GIF URL (máx 3, separados por espacio)" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].media = e.target.value.split(" ").slice(0, 3); setDaysDraft(c); }} />
                       <Textarea rows={3} value={(ex.sets ?? []).join("\n")} placeholder="Una serie por línea. Ej: Efectiva 10-12 reps" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].sets = e.target.value.split("\n"); setDaysDraft(c); }} />
+                      <Textarea rows={2} value={ex.notes ?? ""} placeholder="📝 Observación (ej: subir peso la próxima semana)…" onChange={(e) => { const c = structuredClone(daysDraft); c[activeDay].exercises[j].notes = e.target.value; setDaysDraft(c); }} />
                       <Button variant="ghost" size="sm" className="w-fit text-destructive" onClick={() => { const c = structuredClone(daysDraft); c[activeDay].exercises.splice(j, 1); setDaysDraft(c); }}>
                         <Trash2 size={14} />
                         Eliminar ejercicio
@@ -359,7 +361,7 @@ export default function EntrenadorPage() {
                     <p className="text-sm text-muted-foreground">Día de descanso. Agrega ejercicios para activar este día.</p>
                   )}
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { const c = structuredClone(daysDraft); c[activeDay].exercises.push({ id: "", name: "", media: [], sets: [] }); setDaysDraft(c); }}>
+                    <Button variant="outline" size="sm" onClick={() => { const c = structuredClone(daysDraft); c[activeDay].exercises.push({ id: "", name: "", media: [], sets: [], notes: "" }); setDaysDraft(c); }}>
                       <Plus size={14} />
                       Ejercicio
                     </Button>
