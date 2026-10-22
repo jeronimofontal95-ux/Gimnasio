@@ -570,7 +570,9 @@ export default function ClientePage() {
               <CardContent className="pt-6">
                 <b className="text-sm">Mi progreso de medidas</b>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Comparado con tu toma del {measure.comparison[0]?.previousDate}.
+                  {measure.comparison[0]?.previousDate
+                    ? `Comparado con tu toma del ${measure.comparison[0].previousDate}.`
+                    : "Guarda tus medidas con tu entrenador para comparar la próxima toma."}
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
                   {measure.comparison.map((row) => (
@@ -592,7 +594,7 @@ export default function ClientePage() {
                                     : undefined,
                           }}
                         >
-                          {row.diff === null ? "" : `${row.diff > 0 ? "+" : ""}${row.diff}`}
+                          {row.diff === null ? "—" : `${row.diff > 0 ? "+" : ""}${row.diff}`}
                         </span>
                       </span>
                     </div>
