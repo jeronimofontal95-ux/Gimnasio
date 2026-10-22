@@ -34,6 +34,22 @@ type SessionLog = {
   payload: LogExercise[];
 };
 
+type MeasureRow = {
+  key: string;
+  label: string;
+  current: string;
+  previous: string;
+  diff: number | null;
+  previousDate: string | null;
+  daysAgo: number | null;
+};
+
+type MeasureData = {
+  snapshots: { date: string; values: Record<string, string> }[];
+  comparison: MeasureRow[];
+  currentDate: string;
+};
+
 const PROFILE_FIELDS: [string, string][] = [
   ["edad", "Edad"],
   ["sexo", "Sexo (F/M)"],
@@ -96,6 +112,7 @@ export default function EntrenadorPage() {
   const [daysDraft, setDaysDraft] = useState<Bundle["days"]>([]);
   const [activeDay, setActiveDay] = useState(0);
   const [logs, setLogs] = useState<SessionLog[]>([]);
+  const [measure, setMeasure] = useState<MeasureData | null>(null);
   const [msg, setMsg] = useState("");
   const [savingRoutine, setSavingRoutine] = useState(false);
 
@@ -124,12 +141,23 @@ export default function EntrenadorPage() {
     setDaysDraft(normalizeWeekDays(b.days));
     const firstWithEx = normalizeWeekDays(b.days).findIndex((d) => (d.exercises ?? []).length > 0);
     setActiveDay(firstWithEx >= 0 ? firstWithEx : 0);
+    loadMeasurements(id);
     try {
       const rl = await fetch(`/api/clients/${id}/logs`);
       const jl = await rl.json();
       setLogs(Array.isArray(jl) ? jl : []);
     } catch {
       setLogs([]);
+    }
+  };
+
+  const loadMeasurements = async (id: string) => {
+    try {
+      const rm = await fetch(`/api/clients/${id}/measurements`);
+      const jm = await rm.json();
+      setMeasure(jm && Array.isArray(jm.comparison) ? (jm as MeasureData) : null);
+    } catch {
+      setMeasure(null);
     }
   };
 
@@ -153,6 +181,7 @@ export default function EntrenadorPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draft),
     });
+    loadMeasurements(openId);
     setMsg("Datos guardados");
     setTimeout(() => setMsg(""), 2000);
   };
@@ -183,14 +212,15 @@ export default function EntrenadorPage() {
           }))
           .filter((ex) => ex.name.trim() && ex.sets.length > 0),
       }));
-      const nonEmpty = cleanDays.filter((d) => d.exercises.length > 0);
+      // All days are sent (including rest days) so their ids stay stable and
+      // the order the trainer typed is preserved.
       await fetch(`/api/clients/${openId}/routine`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ days: nonEmpty }),
+        body: JSON.stringify({ days: cleanDays }),
       });
       setDaysDraft(normalizeWeekDays(cleanDays));
-      setMsg(nonEmpty.length ? "Rutina guardada" : "Rutina guardada (semana en descanso)");
+      setMsg(cleanDays.some((d) => d.exercises.length > 0) ? "Rutina guardada" : "Rutina guardada (semana en descanso)");
       setTimeout(() => setMsg(""), 2000);
     } finally {
       setSavingRoutine(false);
@@ -300,6 +330,64 @@ export default function EntrenadorPage() {
                   </div>
                 ))}
                 <Button onClick={saveProfile} className="sm:col-span-2">Guardar datos</Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Progreso de medidas</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Cada vez que guardas datos se guarda una toma. Aquí se compara la última toma con la más
+                  cercana a hace un mes.
+                </p>
+                {measure?.comparison?.length ? (
+                  <>
+                    <div className="grid grid-cols-[1fr_56px_56px_56px] gap-2 text-[11px] font-bold uppercase text-muted-foreground">
+                      <span>Medida</span>
+                      <span className="text-center">Antes</span>
+                      <span className="text-center">Ahora</span>
+                      <span className="text-center">Cambio</span>
+                    </div>
+                    {measure.comparison.map((row) => (
+                      <div key={row.key} className="grid grid-cols-[1fr_56px_56px_56px] items-center gap-2 text-sm">
+                        <span className="truncate">{row.label}</span>
+                        <span className="text-center text-muted-foreground">{row.previous || "—"}</span>
+                        <span className="text-center font-bold">{row.current || "—"}</span>
+                        <span
+                          className="text-center font-bold"
+                          style={{
+                            color:
+                              row.diff === null
+                                ? undefined
+                                : row.diff > 0
+                                  ? "#9CFF3D"
+                                  : row.diff < 0
+                                    ? "#ff6b6b"
+                                    : undefined,
+                          }}
+                        >
+                          {row.diff === null ? "—" : `${row.diff > 0 ? "+" : ""}${row.diff}`}
+                        </span>
+                      </div>
+                    ))}
+                    {measure.comparison[0]?.previousDate && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Comparado con la toma del {measure.comparison[0].previousDate} ({measure.comparison[0].daysAgo} días).
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Sin medidas registradas. Escribe las medidas (bíceps, cuádriceps, cintura, cadera, cuello, pecho,
+                    pantorrilla) y guarda para crear la primera toma.
+                  </p>
+                )}
+                {measure?.snapshots?.length ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Tomas registradas: {measure.snapshots.length} ({measure.snapshots.map((s) => s.date).join(", ")})
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
           </TabsContent>

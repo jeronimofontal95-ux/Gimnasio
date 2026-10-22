@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { workoutLogs, exercises, routineDays } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { todayISO, type TemplateExercise } from "@/lib/forja";
 import type { LogExercise } from "@/db/schema";
 
@@ -28,14 +28,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; day
     .where(and(eq(workoutLogs.clientId, id), eq(workoutLogs.dayId, dayId), eq(workoutLogs.logDate, date)));
 
   const dayRows = await db.select().from(routineDays).where(eq(routineDays.id, dayId));
-  const exRows = await db.select().from(exercises).where(eq(exercises.dayId, dayId));
+  const exRows = await db
+    .select()
+    .from(exercises)
+    .where(eq(exercises.dayId, dayId))
+    .orderBy(asc(exercises.position));
   const sig = contentSig(exRows.map((e) => ({ name: e.name, sets: e.sets as string[] })));
 
-  if (existing.length && existing[0].signature === sig) {
-    return NextResponse.json(existing[0]);
-  }
-
   const stored = (existing.length ? (existing[0].payload as LogExercise[]) : []) ?? [];
+  // Always rebuilt in the routine order, so the client always sees the
+  // exercises exactly in the order the trainer entered them.
   const payload: LogExercise[] = exRows.map((e) => {
     const prev = stored.find((x) => x.name === e.name);
     const targets = e.sets as string[];
@@ -49,6 +51,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; day
       })),
     };
   });
+
+  const same =
+    existing.length &&
+    existing[0].signature === sig &&
+    JSON.stringify(existing[0].payload) === JSON.stringify(payload);
+
+  if (same) {
+    return NextResponse.json(existing[0]);
+  }
 
   if (existing.length) {
     const updated = await db

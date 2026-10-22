@@ -13,6 +13,20 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { LogExercise } from "@/db/schema";
 
 type Client = { id: string; name: string; code: string };
+type MeasureRow = {
+  key: string;
+  label: string;
+  current: string;
+  previous: string;
+  diff: number | null;
+  previousDate: string | null;
+  daysAgo: number | null;
+};
+type MeasureData = {
+  snapshots: { date: string; values: Record<string, string> }[];
+  comparison: MeasureRow[];
+  currentDate: string;
+};
 type Bundle = {
   client: Client;
   profile: Record<string, string> | null;
@@ -80,6 +94,10 @@ const dowOf = (iso: string) => (parseISO(iso).getDay() + 6) % 7; // 0 = Monday �
 const fmtShort = (iso: string) =>
   parseISO(iso).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" });
 
+// Only days with exercises are shown to the client (rest days stay in the
+// trainer's routine but are not listed here).
+const withExercises = (list: Bundle["days"]) => list.filter((d) => (d.exercises ?? []).length > 0);
+
 export default function ClientePage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [picked, setPicked] = useState<Client | null>(null);
@@ -91,6 +109,7 @@ export default function ClientePage() {
   const [log, setLog] = useState<LogExercise[] | null>(null);
   // Routines (day ids) with logged data on the selected date → ✓ badge on pills.
   const [dayStatus, setDayStatus] = useState<Record<string, boolean>>({});
+  const [measure, setMeasure] = useState<MeasureData | null>(null);
   const [selDate, setSelDate] = useState(() => isoLocal(new Date()));
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date();
@@ -114,16 +133,24 @@ export default function ClientePage() {
     }
   }, [selDate]);
 
-  const login = async () => {
-    if (!picked) return;
-    if (code.trim() !== picked.code) {
+  const login = async (clientId?: string) => {
+    const id = clientId ?? picked?.id;
+    if (!id) return;
+    if (!clientId && picked && code.trim() !== picked.code) {
       setErr("Código incorrecto.");
       return;
     }
-    const r = await fetch(`/api/clients/${picked.id}`);
+    const r = await fetch(`/api/clients/${id}`);
     const b: Bundle = await r.json();
     setBundle(b);
     setErr("");
+    try {
+      const rm = await fetch(`/api/clients/${id}/measurements`);
+      const jm = await rm.json();
+      setMeasure(jm && Array.isArray(jm.comparison) ? (jm as MeasureData) : null);
+    } catch {
+      setMeasure(null);
+    }
   };
 
   const loadLog = async (clientId: string, dayId: string, date: string) => {
@@ -167,8 +194,10 @@ export default function ClientePage() {
 
   useEffect(() => {
     if (bundle && bundle.days.length) {
-      const idx = bundle.days.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
-      refreshForDate(bundle.client.id, bundle.days, selDate, idx >= 0 ? idx : 0);
+      const list = withExercises(bundle.days);
+      if (!list.length) return;
+      const idx = list.findIndex((d) => d.weekday != null && d.weekday === dowOf(selDate));
+      refreshForDate(bundle.client.id, list, selDate, idx >= 0 ? idx : 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundle?.client.id]);
@@ -207,7 +236,7 @@ export default function ClientePage() {
       setLog(null);
       return;
     }
-    refreshForDate(bundle.client.id, bundle.days, date, dayIdx);
+    refreshForDate(bundle.client.id, withExercises(bundle.days), date, dayIdx);
   };
 
   if (!bundle) {
@@ -262,7 +291,7 @@ export default function ClientePage() {
               />
             </div>
             {err && <p className="text-sm text-destructive">{err}</p>}
-            <Button onClick={login}>Entrar</Button>
+            <Button onClick={() => login()}>Entrar</Button>
           </CardContent>
         </Card>
       </div>
@@ -270,7 +299,7 @@ export default function ClientePage() {
   }
 
   const todayStr = isoLocal(new Date());
-  const days = bundle.days;
+  const days = withExercises(bundle.days);
   const day = days[dayIdx] ?? null;
   const isFutureDate = selDate > todayStr;
   const preview: LogExercise[] | null =
@@ -521,20 +550,58 @@ export default function ClientePage() {
       )}
 
       {tab === "datos" && (
-        <Card>
-          <CardContent className="pt-6">
-            <b className="text-sm">Mis medidas</b>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {PROFILE_LABELS.filter(([k]) => bundle.profile?.[k]).map(([k, label]) => (
-                <div key={k} className="rounded-md bg-muted p-2 text-center">
-                  <div className="font-extrabold">{bundle.profile?.[k]}</div>
-                  <div className="text-[10px] text-muted-foreground">{label}</div>
+        <>
+          <Card>
+            <CardContent className="pt-6">
+              <b className="text-sm">Mis medidas</b>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {PROFILE_LABELS.filter(([k]) => bundle.profile?.[k]).map(([k, label]) => (
+                  <div key={k} className="rounded-md bg-muted p-2 text-center">
+                    <div className="font-extrabold">{bundle.profile?.[k]}</div>
+                    <div className="text-[10px] text-muted-foreground">{label}</div>
+                  </div>
+                ))}
+              </div>
+              {!PROFILE_LABELS.some(([k]) => bundle.profile?.[k]) && <p className="mt-2 text-sm text-muted-foreground">Sin medidas registradas.</p>}
+            </CardContent>
+          </Card>
+          {measure?.comparison?.length ? (
+            <Card>
+              <CardContent className="pt-6">
+                <b className="text-sm">Mi progreso de medidas</b>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Comparado con tu toma del {measure.comparison[0]?.previousDate}.
+                </p>
+                <div className="mt-3 flex flex-col gap-2">
+                  {measure.comparison.map((row) => (
+                    <div key={row.key} className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
+                      <span className="text-sm">{row.label}</span>
+                      <span className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">{row.previous || "—"}</span>
+                        <span className="font-bold">{row.current || "—"}</span>
+                        <span
+                          className="font-bold"
+                          style={{
+                            color:
+                              row.diff === null
+                                ? undefined
+                                : row.diff > 0
+                                  ? "#9CFF3D"
+                                  : row.diff < 0
+                                    ? "#ff6b6b"
+                                    : undefined,
+                          }}
+                        >
+                          {row.diff === null ? "" : `${row.diff > 0 ? "+" : ""}${row.diff}`}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            {!PROFILE_LABELS.some(([k]) => bundle.profile?.[k]) && <p className="mt-2 text-sm text-muted-foreground">Sin medidas registradas.</p>}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          ) : null}
+        </>
       )}
 
       {tab === "progreso" &&

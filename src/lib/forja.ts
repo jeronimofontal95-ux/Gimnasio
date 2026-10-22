@@ -86,3 +86,48 @@ export function plantillaRutina(): { days: TemplateDay[] } {
 
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 export const genCode = () => String(Math.floor(1000 + Math.random() * 9000));
+
+// Body measurements the trainer tracks, with the labels used in the UI.
+export const MEASURE_FIELDS: [string, string][] = [
+  ["cuello", "Cuello"],
+  ["pecho", "Pecho"],
+  ["cintura", "Cintura / torso"],
+  ["cadera", "Cadera"],
+  ["bicepsD", "Bíceps derecho"],
+  ["bicepsI", "Bíceps izquierdo"],
+  ["cuadricepsD", "Cuádriceps derecho"],
+  ["cuadricepsI", "Cuádriceps izquierdo"],
+  ["gemeloD", "Pantorrilla derecha"],
+  ["gemeloI", "Pantorrilla izquierda"],
+];
+
+export const MEASURE_KEYS = MEASURE_FIELDS.map(([k]) => k);
+
+// Difference in days between two YYYY-MM-DD dates.
+export const daysBetween = (a: string, b: string) =>
+  Math.round(
+    (new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86400000
+  );
+
+// Local (not UTC) date, so the measurement day matches the trainer's calendar.
+export const todayLocalISO = () => {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+// Picks the snapshot closest to (date - days) — used for the month comparison.
+export const closestTo = <T extends { date: string }>(list: T[], date: string, days: number) => {
+  if (!list.length) return null;
+  const target = new Date(`${date}T00:00:00Z`).getTime() - days * 86400000;
+  let best: T | null = null;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (const s of list) {
+    const diff = Math.abs(new Date(`${s.date}T00:00:00Z`).getTime() - target);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = s;
+    }
+  }
+  return best;
+};

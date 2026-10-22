@@ -7,6 +7,7 @@ import {
   uuid,
   varchar,
   jsonb,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /* ================= better-auth core tables ================= */
@@ -164,6 +165,20 @@ export const history = pgTable("history", {
   date: text("date").notNull(),
   dayName: text("day_name").notNull(),
 });
+
+export const measurements = pgTable(
+  "measurements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+    // measurement values per profile field, e.g. { cintura: "82", cadera: "95" }
+    values: jsonb("values").$type<Record<string, string>>().notNull().default({}),
+  },
+  (t) => [uniqueIndex("measurements_client_date_idx").on(t.clientId, t.date)]
+);
 
 export type LogSet = { target: string; reps: string; weight: string; done: boolean };
 export type LogExercise = { name: string; sets: LogSet[] };
